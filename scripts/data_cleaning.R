@@ -54,34 +54,48 @@ test$bathrooms[is.na(test$bathrooms)] <- moda_bath
 test$surface_total[is.na(test$surface_total)] <- median_surftotal
 test$surface_covered[is.na(test$surface_covered)] <- median_surfcov
 
-#Precio por m2
+#Identificar propiedades duplicadas y dejar solo una
 train <- train %>%
-  mutate(precio_por_mt2 = round(price / surface_total, 0)) 
-summary(train$precio_por_mt2) #promedio coherente con lo reportado por constructoras pero con valores atipicos
-hist(train$precio_por_mt2)
+  group_by(year, month, surface_total, surface_covered, rooms, bedrooms, bathrooms, price, lat, lon) %>%
+  mutate(dup = if_else(n() > 1, 1, 0)) %>%
+  ungroup()
+table(train$dup)
 
-train %>%
+train_nodups <- train %>%
+  group_by(year, month, surface_total, surface_covered, rooms, bedrooms, bathrooms, price, lat, lon) %>%
+  slice_head(n = 1) %>%  
+  ungroup()
+
+#Identificar propiedades que se publican varias veces en distintos momentos y dejar la más reciente
+train_nodups <- train %>%
+  group_by(surface_total, surface_covered, rooms, bedrooms, bathrooms, lat, lon) %>%
+  arrange(desc(year), desc(month)) %>%  # Ordena por año y mes (de más reciente a más antiguo)
+  mutate(dup = case_when(
+    n() > 1 ~ row_number(),  # Si hay duplicados, asigna un número secuencial (1 será la más reciente)
+    TRUE ~ 0                 # Si no hay duplicados, asigna 0
+  )) %>%
+  ungroup() %>%
+  filter(dup %in% c(0, 1))  # Filtra solo las observaciones con dup == 0 o dup == 1
+table(train_nodups$dup)
+
+#Precio por m2
+train_nodups  <-train_nodups  %>%
+  mutate(precio_por_mt2 = round(price / surface_total, 0)) 
+summary(train_nodups $precio_por_mt2) #promedio coherente con lo reportado por constructoras pero con valores atipicos
+hist(train_nodups $precio_por_mt2)
+
+train_nodups  %>%
   ggplot(aes(y = precio_por_mt2)) +
   geom_boxplot(fill = "darkblue", alpha = 0.4) +
   labs(
     y = "Precio por metro cuadrado", x = "") +
   theme_bw()
 
-#Eliminar obs por encima y por debajo de 2SD??
-low <- round(mean(train$precio_por_mt2) - 2*sd(train$precio_por_mt2),2)
-up <- round(mean(train$precio_por_mt2) + 2*sd(train$precio_por_mt2))
+#Eliminar obs por encima y por debajo de 2SD
+low <- round(mean(train_nodups$precio_por_mt2) - 2*sd(train_nodups$precio_por_mt2),2)
+up <- round(mean(train_nodups$precio_por_mt2) + 2*sd(train_nodups$precio_por_mt2))
 
-#Identificar duplicados en precio y descripcion
-train <- train %>%
-  group_by(description, price) %>%
-  mutate(dup = if_else(n() > 1, 1, 0)) %>%
-  ungroup()
-table(train$dup)
 
-train_nodup <- train %>%
-  group_by(description, price) %>%
-  filter(row_number() == 1) %>%
-  ungroup()
 
 
 
