@@ -40,6 +40,8 @@ p_load(tidyverse,
        foreign, 
        skimr, # summary data
        visdat,
-       sf
+       sf, 
+       stringi, 
+       tm
 )
 
