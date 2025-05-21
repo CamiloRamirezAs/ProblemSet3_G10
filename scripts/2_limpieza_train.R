@@ -50,7 +50,7 @@ train_nodups <- train %>%
   filter(dup %in% c(0, 1))  # Filtra solo las observaciones con dup == 0 o dup == 1
 table(train_nodups$dup)
 
-# 3. lIMPIEZA DATOS  ----------------------------------------------------------
+# 3. lIMPIEZA DATOS: CORREGIR VARIABLES EXISTENTES Y CREAR NUEVAS -------------
 
 # Tildes y caracteres especiales del español
 train_nodups$description_adj <- stri_trans_general(str = train_nodups$description, id = "Latin-ASCII")
@@ -245,6 +245,39 @@ train_nodups <- train_nodups %>%
 
 table(is.na(train_nodups$bathrooms))
 
+###Dummy de presencia de piscina
+train_nodups$piscina <- ifelse(agrepl("piscina", train_nodups$description_adj, max.distance = 1), 1, 0)
+
+###Dummy de presencia de garaje
+train_nodups$garaje <- ifelse(
+  agrepl("garaje", train_nodups$description_adj, max.distance = 1) |
+    agrepl("parqueadero", train_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+
+###Dummy de vigilancia
+train_nodups$seguridad <- ifelse(
+  agrepl("vigilancia", train_nodups$description_adj, max.distance = 1) |
+    agrepl("seguridad", train_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+table(train_nodups$seguridad)
+
+##Dummy de balcon
+train_nodups$balcon <- ifelse(
+  agrepl("balcon", train_nodups$description_adj, max.distance = 1) |
+    agrepl("terraza", train_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+
+##Dummy de gimnasio
+train_nodups$gym <- ifelse(
+  agrepl("gimnasio", train_nodups$description_adj, max.distance = 1) |
+    agrepl("gym", train_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+table(train_nodups$gym)
+
 #4.IMPUTACION   --------------------------------------------------------------
 
 #Calcular la mediana para superficie total e imputar
@@ -278,16 +311,13 @@ train_nodups <- train_nodups %>%
   filter(precio_por_mt2 >= low, precio_por_mt2 <= up)
 
 train_nodups <- train_nodups %>% select(property_id, city, price, month, year, 
-                                        surface_total, bedrooms, bathrooms, type_housing,
-                                        description_adj, lat, lon)
+                                        surface_total, bedrooms, bathrooms, 
+                                        type_housing, description_adj, lat, lon,
+                                        piscina, garaje, seguridad, balcon, gym)
 
 
 # Guardar los archivos en formato .rds en la carpeta stores
 saveRDS(train_nodups, file.path(stores_path, "train_data.rds"))
-
-
-
-
 
 
 

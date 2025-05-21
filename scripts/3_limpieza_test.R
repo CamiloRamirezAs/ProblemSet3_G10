@@ -48,7 +48,7 @@ test_nodups <- test %>%
   filter(dup %in% c(0, 1))  
 table(test_nodups$dup)
 
-# 3. lIMPIEZA DATOS  ----------------------------------------------------------
+# 3. lIMPIEZA DATOS: CORREGIR VARIABLES EXISTENTES Y CREAR NUEVAS -------------
 
 # Tildes y caracteres especiales del español
 test_nodups$description_adj <- stri_trans_general(str = test_nodups$description, id = "Latin-ASCII")
@@ -241,7 +241,36 @@ test_nodups <- test_nodups %>%
   )
   )
 
-table(is.na(test_nodups$bathrooms))
+###Dummy de presencia de piscina
+test_nodups$piscina <- ifelse(agrepl("piscina", test_nodups$description_adj, max.distance = 1), 1, 0)
+
+###Dummy de presencia de garaje
+test_nodups$garaje <- ifelse(
+  agrepl("garaje", test_nodups$description_adj, max.distance = 1) |
+    agrepl("parqueadero", test_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+
+###Dummy de vigilancia
+test_nodups$seguridad <- ifelse(
+  agrepl("vigilancia", test_nodups$description_adj, max.distance = 1) |
+    agrepl("seguridad", test_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+
+##Dummy de balcon
+test_nodups$balcon <- ifelse(
+  agrepl("balcon", test_nodups$description_adj, max.distance = 1) |
+    agrepl("terraza", test_nodups$description_adj, max.distance = 1),
+  1, 0
+)
+
+##Dummy de gimnasio
+test_nodups$gym <- ifelse(
+  agrepl("gimnasio", test_nodups$description_adj, max.distance = 1) |
+    agrepl("gym", test_nodups$description_adj, max.distance = 1),
+  1, 0
+)
 
 #4.IMPUTACION   --------------------------------------------------------------
 
@@ -250,9 +279,9 @@ test_nodups$bathrooms[is.na(test_nodups$bathrooms)] <- 2
 test_nodups$surface_total[is.na(test_nodups$surface_total)] <- 121
 
 test_nodups <- test_nodups %>% select(property_id, city, month, year, 
-                                        surface_total, bedrooms, bathrooms, type_housing,
-                                        description_adj, lat, lon)
-
+                                        surface_total, bedrooms, bathrooms, 
+                                        type_housing, description_adj, lat, lon,
+                                        piscina, garaje, seguridad, balcon, gym)
 
 # Guardar los archivos en formato .rds en la carpeta stores
 saveRDS(test, file.path(stores_path, "test_data.rds"))
