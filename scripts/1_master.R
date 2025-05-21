@@ -50,13 +50,15 @@ p_load(tidyverse,
        parsnip, 
        rio, ## read datasets
        tidymodels, #modelos de ML, colección de 8  librerías
-       yardstick
+       yardstick, 
+       keras, 
+       Matrix
 )
 
 
-install.packages("keras")
-library(reticulate)
-reticulate::virtualenv_create("r-reticulate", python = install_python())
-library(keras)
-install_keras(envname = "r-reticulate")
+# install.packages("keras")
+# library(reticulate)
+# reticulate::virtualenv_create("r-reticulate", python = install_python())
+# library(keras)
+# install_keras(envname = "r-reticulate")
 
