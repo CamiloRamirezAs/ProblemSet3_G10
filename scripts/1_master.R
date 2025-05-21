@@ -53,3 +53,10 @@ p_load(tidyverse,
        yardstick
 )
 
+
+install.packages("keras")
+library(reticulate)
+reticulate::virtualenv_create("r-reticulate", python = install_python())
+library(keras)
+install_keras(envname = "r-reticulate")
+
