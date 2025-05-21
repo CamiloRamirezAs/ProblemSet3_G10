@@ -44,7 +44,7 @@ modnn %>% compile(
 early_stop <- callback_early_stopping(
   monitor = "val_mean_absolute_error", 
   patience = 20,         # número de épocas sin mejora antes de detener
-  restore_best_weights = TRUE # opcional: restaura los mejores pesos
+  restore_best_weights = TRUE 
 )
 
 history <- modnn %>% fit(
