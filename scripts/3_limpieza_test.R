@@ -284,5 +284,5 @@ test_nodups <- test_nodups %>% select(property_id, city, month, year,
                                         piscina, garaje, seguridad, balcon, gym)
 
 # Guardar los archivos en formato .rds en la carpeta stores
-saveRDS(test, file.path(stores_path, "test_data.rds"))
+saveRDS(test_nodups, file.path(stores_path, "test_data.rds"))
 

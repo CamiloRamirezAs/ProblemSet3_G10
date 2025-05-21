@@ -42,6 +42,8 @@ p_load(tidyverse,
        visdat,
        sf, 
        stringi, 
-       tm
+       tm, 
+       leaflet,
+       osmdata
 )
 
