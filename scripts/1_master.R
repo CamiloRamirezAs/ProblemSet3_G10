@@ -44,6 +44,7 @@ p_load(tidyverse,
        stringi, 
        tm, 
        leaflet,
-       osmdata
+       osmdata, 
+       nnet 
 )
 
