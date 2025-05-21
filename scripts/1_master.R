@@ -45,6 +45,11 @@ p_load(tidyverse,
        tm, 
        leaflet,
        osmdata, 
-       nnet 
+       nnet, 
+       recipes, 
+       parsnip, 
+       rio, ## read datasets
+       tidymodels, #modelos de ML, colección de 8  librerías
+       yardstick
 )
 
