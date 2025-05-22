@@ -260,14 +260,6 @@ centroides_cc <- centroides_cc %>%
                 mutate(y=st_coordinates(centroides_cc)[, "Y"]) 
 
 
-# Graficar centros comerciales
-mapa_cc <- ggplot() +
-              geom_sf(data = localidades, color = "#8B8989") + 
-              geom_sf(data = centroides_cc, color = "red4", shape = 16, size = 0.5) +  # centroide con cruz
-              labs(color = "Parques") +
-              theme_bw()
-ggplotly(mapa_cc)
-
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_train <- st_as_sf(train_B, coords = c("lon", "lat"), crs = 4686)
 centroides_sf_cc <- st_as_sf(centroides_cc, coords = c("x", "y"), crs = 4686)
@@ -280,7 +272,7 @@ centroides_sf_cc_proj <- st_transform(centroides_sf_cc, crs = 3116)
 dist_matrix_cc <- st_distance(sf_train_proj, centroides_sf_cc_proj)
 dim(dist_matrix_cc)
 
-# Distancia minima a cualquier parque
+# Distancia midata:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAbElEQVR4Xs2RQQrAMAgEfZgf7W9LAguybljJpR3wEse5JOL3ZObDb4x1loDhHbBOFU6i2Ddnw2KNiXcdAXygJlwE8OFVBHDgKrLgSInN4WMe9iXiqIVsTMjH7z/GhNTEibOxQswcYIWYOR/zAjBJfiXh3jZ6AAAAAElFTkSuQmCCnima a cualquier parque
 dist_min_cc <- apply(dist_matrix_cc, 1, min)
 
 # La agregamos como variable a nuestra base de datos original 
@@ -312,14 +304,6 @@ ggplotly(cc_cor)
 
 # Importar los datos de CAI
 cai <- st_read(file.path(raw_path, "Datos_Bogota", "12_estaciones_policia_CAI", "ComandoAtencionInmediata.shp"))
-
-# Graficar los CAI
-mapa_cai <- ggplot() +
-          geom_sf(data = localidades, color = "#8B8989") + 
-          geom_sf(data = cai, color = "green4", shape = 16, size = 0.5) +  
-          labs(color = "CAI") +
-          theme_bw()
-ggplotly(mapa_cai)
 
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_train <- st_as_sf(train_B, coords = c("lon", "lat"), crs = 4686)
@@ -366,13 +350,6 @@ ggplotly(cai_cor)
 # Importar los datos de Transmilenio
 transmi <- st_read(file.path(raw_path, "Datos_Bogota", "10_estaciones_transmilenio", "Estaciones_Troncales_de_TRANSMILENIO.shp"))
 
-# Graficar las estaciones de Transmilenio
-mapa_transmi <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = transmi, color = "red3", shape = 16, size = 1) +  
-  labs(color = "Transmilenio") +
-  theme_bw()
-ggplotly(mapa_transmi)
 
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_train <- st_as_sf(train_B, coords = c("lon", "lat"), crs = 4686)
@@ -419,13 +396,6 @@ ggplotly(transmi_cor)
 # Importar los datos de estaciones del SITP
 sitp <- st_read(file.path(raw_path, "Datos_Bogota", "11_paraderos_SITP", "Paraderos_Zonales_del_SITP.shp"))
 
-# Graficar las estaciones del SITP
-mapa_sitp <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = sitp, color = "blue3", shape = 16, size = 0.5) +  
-  labs(color = "SITP") +
-  theme_bw()
-ggplotly(mapa_sitp)
 
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_train <- st_as_sf(train_B, coords = c("lon", "lat"), crs = 4686)
@@ -721,13 +691,6 @@ centroides_parques <- centroides_parques %>%
   mutate(y=st_coordinates(centroides_parques)[, "Y"]) 
 
 
-# Graficar parques
-mapa_parques <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = centroides_parques, color = "green4", shape = 16, size = 0.5) +  # centroide con cruz
-  labs(color = "Parques") +
-  theme_bw()
-
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
 centroides_sf_parque <- st_as_sf(centroides_parques, coords = c("x", "y"), crs = 4686)
@@ -825,14 +788,6 @@ centroides_cc <- centroides_cc %>%
   mutate(y=st_coordinates(centroides_cc)[, "Y"]) 
 
 
-# Graficar centros comerciales
-mapa_cc <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = centroides_cc, color = "red4", shape = 16, size = 0.5) +  # centroide con cruz
-  labs(color = "Parques") +
-  theme_bw()
-ggplotly(mapa_cc)
-
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
 centroides_sf_cc <- st_as_sf(centroides_cc, coords = c("x", "y"), crs = 4686)
@@ -866,14 +821,6 @@ ggplotly(parques_cc)
 # Importar los datos de CAI
 cai <- st_read(file.path(raw_path, "Datos_Bogota", "12_estaciones_policia_CAI", "ComandoAtencionInmediata.shp"))
 
-# Graficar los CAI
-mapa_cai <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = cai, color = "green4", shape = 16, size = 0.5) +  
-  labs(color = "CAI") +
-  theme_bw()
-ggplotly(mapa_cai)
-
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
 sf_cai <- st_as_sf(cai, coords = c("x", "y"), crs = 4686)
@@ -906,14 +853,6 @@ ggplotly(cai_hist)
 # Importar los datos de Transmilenio
 transmi <- st_read(file.path(raw_path, "Datos_Bogota", "10_estaciones_transmilenio", "Estaciones_Troncales_de_TRANSMILENIO.shp"))
 
-# Graficar las estaciones de Transmilenio
-mapa_transmi <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = transmi, color = "red3", shape = 16, size = 1) +  
-  labs(color = "Transmilenio") +
-  theme_bw()
-ggplotly(mapa_transmi)
-
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
 sf_transmi <- st_as_sf(transmi, coords = c("x", "y"), crs = 4686)
@@ -945,14 +884,6 @@ ggplotly(transmi_hist)
 
 # Importar los datos de estaciones del SITP
 sitp <- st_read(file.path(raw_path, "Datos_Bogota", "11_paraderos_SITP", "Paraderos_Zonales_del_SITP.shp"))
-
-# Graficar las estaciones del SITP
-mapa_sitp <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = sitp, color = "blue3", shape = 16, size = 0.5) +  
-  labs(color = "SITP") +
-  theme_bw()
-ggplotly(mapa_sitp)
 
 # Primero crear objetos sf con CRS WGS84 (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
@@ -988,14 +919,6 @@ ggplotly(sitp_hist)
 
 # Importar los datos de colegios cercano
 colegios <- st_read(file.path(raw_path, "Datos_Bogota", "13_colegios", "Colegios03_2024.shp"))
-
-# Graficar las estaciones de Transmilenio
-mapa_colegios <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = colegios, color = "turquoise4", shape = 16, size = 0.5) +  
-  labs(color = "Colegios") +
-  theme_bw()
-ggplotly(mapa_colegios)
 
 # Primero crear objetos sf con CRS MAGNA SIRGAS (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
@@ -1036,9 +959,13 @@ sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
 #estrato <- st_make_valid(estrato)
 #sf_test <- st_make_valid(sf_test)
 
+# Primero crear objetos sf con CRS MAGNA SIRGAS (lon/lat)
+sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
+sf_estrato <- st_as_sf(estrato, coords = c("x", "y"), crs = 4686)
+
 # Transformar bases al mismo CRS (EPSG:3116) que fue hecho para Bogotá
-estrato <- st_transform(estrato, crs = 3116)
-sf_test <- st_transform(test_B, crs = 3116)
+estrato <- st_transform(sf_estrato, crs = 3116)
+sf_test <- st_transform(sf_test, crs = 3116)
 
 # Unir los predios con las manzanas catastrales
 predios_estrato <- st_join(sf_test, estrato["ESTRATO"])
@@ -1089,33 +1016,11 @@ ggplotly(estrato_hist)
 
 
 
-mapa_predios <- ggplot() +
-  geom_sf(data = test_B, aes(color = as.factor(ESTRATO)), size = 0.5) +  # Colorear según el estrato
-  scale_color_viridis_d(name = "Estrato") +  # Escala de colores discreta
-  theme_minimal() +  # Tema minimalista
-  labs(
-    title = "Mapa de Predios con Estrato",
-    subtitle = "Visualización de estratos asignados a predios",
-    x = "Longitud",
-    y = "Latitud"
-  )
-
-# Mostrar el mapa
-print(mapa_predios)
-
-
 # 4.9. RESTAURANTES Y BARES CERCANOS -------------------------------------------
 
 # Importar los datos de colegios cercano
 restaurantes <- st_read(file.path(raw_path, "Datos_Bogota", "8_establecimiento_gastronomia_bar", "EGBa.shp"))
 
-# Graficar las estaciones de Transmilenio
-mapa_restaurantes <- ggplot() +
-  geom_sf(data = localidades, color = "#8B8989") + 
-  geom_sf(data = restaurantes, color = "orchid3", shape = 16, size = 0.5) +  
-  labs(color = "Restaurantes") +
-  theme_bw()
-ggplotly(mapa_restaurantes)
 
 # Primero crear objetos sf con CRS MAGNA SIRGAS (lon/lat)
 sf_test <- st_as_sf(test_B, coords = c("lon", "lat"), crs = 4686)
@@ -1146,11 +1051,6 @@ restaurantes_hist <- ggplot(test_B, aes(x = num_restaurantes)) +
 ggplotly(restaurantes_hist)
 
 
-# Dejar solo variables espaciales
-test_B <- test_B %>% 
-  select(-lon, -lat, -geometry, -gym, -balcon, -seguridad, -garaje, -piscina, -description_adj, - type_housing, -bathrooms, -bedrooms, -surface_total, -year, -month, -city, -price)
-
-
 #######################################
 # EXPORTAR BASES
 #######################################
@@ -1159,19 +1059,19 @@ test_B <- test_B %>%
 train_final <- as.data.frame(train_B)
 
 train_final <- train_B %>% 
-              select(-lon, -lat, -geometry.x, -geometry.y, -description_adj, -gym, -balcon, -seguridad, -garaje, -piscina, -description_adj, - type_housing, -bathrooms, -bedrooms, -surface_total, -year, -month, -city, -price)
+              select(-lon, -lat, -geometry.x, -geometry.y, -description_adj, -gym, -balcon, -seguridad, -garaje, -piscina, -description_adj, -type_housing, -bathrooms, -bedrooms, -surface_total, -year, -month, -city, -price)
 
 
 # Dejar solo las variables espaciales en train
 test_final <- as.data.frame(test_B)
 
-test_final <- test_final %>% select(-geometry.x)
-               select(-lon, -lat, -geometry.x, -geometry.y, -gym, -balcon, -seguridad, -garaje, -piscina, -description_adj, - type_housing, -bathrooms, -bedrooms, -surface_total, -year, -month, -city)
+test_final <- test_final %>%
+               select(-lon, -lat, -geometry,  -gym, -balcon, -seguridad, -garaje, -piscina, -description_adj, -type_housing, -bathrooms, -bedrooms, -surface_total, -year, -month, -city)
 
 
 # Guardar los archivos en formato .rds en la carpeta stores
-saveRDS(train_final, file.path(stores_path, "train_spatial.rds"))
-saveRDS(test_final, file.path(stores_path, "test_spatial.rds"))
+saveRDS(train_final, file.path(stores_path, "spatial_train.rds"))
+saveRDS(test_final, file.path(stores_path, "spatial_test.rds"))
 
 # Mensaje de proceso realizado
 message(("✅ Bases guardadas en "), stores_path)
