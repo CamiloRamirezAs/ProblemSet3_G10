@@ -13,6 +13,7 @@ test =  readRDS(file.path(stores_path, "test_data.rds"))
 test = as.data.frame(test)
 rownames(test) <- test$property_id
 test = test %>% select(-c(lon, lat, city, description_adj, month, year)) 
+
 x_test <- scale(model.matrix( ~ . - property_id - 1, data = test))
 x_test <- model.matrix( ~ . - property_id - 1, data = test) %>% scale()
 
