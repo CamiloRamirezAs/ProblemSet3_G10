@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><MD_Metadata xmlns:gts="http://www.isotc211.org/2005/gts" xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:xalan="http://xml.apache.org/xalan" xmlns:srv="http://www.isotc211.org/2005/srv" xmlns:gmx="http://www.isotc211.org/2005/gmx" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xmlns="http://www.isotc211.org/2005/gmd">
+    <fileIdentifier>
+        <gco:CharacterString>70b111e96b514bdfb36a7eb532d0eb4f</gco:CharacterString>
+    </fileIdentifier>
+    <characterSet>
+        <MD_CharacterSetCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_CharacterSetCode" codeListValue="utf8" codeSpace="ISOTC211/19115">utf8</MD_CharacterSetCode>
+    </characterSet>
+    <hierarchyLevel>
+        <MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="dataset" codeSpace="ISOTC211/19115">dataset</MD_ScopeCode>
+    </hierarchyLevel>
+    <hierarchyLevelName>
+        <gco:CharacterString>dataset</gco:CharacterString>
+    </hierarchyLevelName>
+    <contact>
+        <CI_ResponsibleParty>
+            <role>
+                <CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="pointOfContact" codeSpace="ISOTC211/19115">pointOfContact</CI_RoleCode>
+            </role>
+        </CI_ResponsibleParty>
+    </contact>
+    <dateStamp>
+        <gco:Date>2019-09-12</gco:Date>
+    </dateStamp>
+    <metadataStandardName>
+        <gco:CharacterString>ISO 19139 Geographic Information - Metadata - Implementation Specification</gco:CharacterString>
+    </metadataStandardName>
+    <metadataStandardVersion>
+        <gco:CharacterString>2007</gco:CharacterString>
+    </metadataStandardVersion>
+    <identificationInfo>
+        <MD_DataIdentification>
+            <citation>
+                <CI_Citation>
+                    <title>
+                        <gco:CharacterString>Paraderos Zonales del SITP (Julio del 2019)</gco:CharacterString>
+                    </title>
+                    <date gco:nilReason="missing"/>
+                </CI_Citation>
+            </citation>
+            <abstract>
+                <gco:CharacterString>El contenido de la capa de información disponible corresponde al conjunto de paraderos dispuestos por el sistema de transporte zonal, asociado a las rutas que operan los buses azules (SITP), alimentadores (buses color verde), complementarios (buses color naranja) y servicios especiales (buses de color vino tinto)  en el Distrito Capital.Diccionario de datos:objectid: Corresponde al identificador propio de cada registro dentro de la capa de informacióncenefa_paradero: Corresponde al nombre sobre el cual se identifica cada uno de los paraderos dentro del SITPmdoulo_paradero: Dato que permite diferenciar las rutas asociadas asociadas a un paradero, facilita la identificación del acceso de los usuarios a las rutaszona_paradero: Hace referencia a la zona en la que se encuentra ubicado el paradero, según zonas SITPnombre_paradero: Característica alfanumérica del hito asociado a la ubicación del paraderovia_paradero: contiene la vía, calle, carrera, etc, sobre la cual se encuentra el paraderodireccion_paradero: Contiene la nomenclatura de la ubicación por dirección del paraderolocalidad_paradero: Contiene la localidad en la que se encuentra el paradero ubicadoconsola_paradero: Contiene el texto que se presenta dentro de la unidad lógica consultada por el conductor del bus para conocer la próxima parada de la rutapanel_paradero: Contiene el texto que se representa en el display presentado dentro del bus para indicar a los usuario la próxima parada de la rutaaudio_paradero: Contiene el texto que se representa mediante audio al interior del bus para indicar la próxima paradalongitud_paradero: Contiene la coordenada longitud en formato de grados decimales, la cual esta representada en el marco de referencia MAGNA_SIRGAS origen Bogotálatitud_paradero: Contiene la coordenada latitud en formato de grados decimales, la cual esta representada en el marco de referencia MAGNA_SIRGAS origen Bogotácoordenada_x_paradero: Contiene la coordenada X en formato de métrico, la cual esta representada en el marco de referencia MAGNA_SIRGAS origen Bogotácoordenada_y_paradero: Contiene la coordenada Y en formato de métrico, la cual esta representada en el marco de referencia MAGNA_SIRGAS origen Bogotáglobalid: Representa el identificado único dentro de la base de datos para cada uno de los registrosFuente:Dirección de Modos AlternativosBogotá D.C., Colombiawww.transmilenio.gov.coAvenida El Dorado # 69 - 76 torre 1 piso 6Código Postal: 111071PBX: 57 (1) 2203000 ext. 1 o 2 | Línea Fija: 4824304Horario de atención: 7:30 am - 4:30 pm de Lunes a ViernesInformación de contacto:Establecer previo contacto telefónico o a través de correo electrónico, para realizar la solicitud o fijar una cita en el horario de atención.</gco:CharacterString>
+            </abstract>
+            <purpose>
+                <gco:CharacterString>Los puntos representados por la capa de información, corresponden a la ubicación de los paraderos del componente zonal del Sistema Integrado de Transporte Público SITP.</gco:CharacterString>
+            </purpose>
+            <credit>
+                <gco:CharacterString>TransMilenio S.A.</gco:CharacterString>
+            </credit>
+            <descriptiveKeywords>
+                <MD_Keywords>
+                    <keyword>
+                        <gco:CharacterString>SITP</gco:CharacterString>
+                    </keyword>
+                    <keyword>
+                        <gco:CharacterString>Zonales</gco:CharacterString>
+                    </keyword>
+                    <keyword>
+                        <gco:CharacterString>Paraderos</gco:CharacterString>
+                    </keyword>
+                    <keyword>
+                        <gco:CharacterString>TransMilenio</gco:CharacterString>
+                    </keyword>
+                </MD_Keywords>
+            </descriptiveKeywords>
+            <resourceConstraints>
+                <MD_Constraints>
+                    <useLimitation>
+                        <gco:CharacterString>Se autoriza el uso,
+aprovechamiento y construcción de análisis con la información contenida,
+siempre y cuando se haga la siguiente cita textual: “Fuente: TRANSMILENIO S.A:
+www.transmilenio.gov.co”. La información en general que aparece se ha
+construido siguiendo estrictos procedimientos de control de calidad. No
+obstante, TRANSMILENIO S.A  no se
+responsabiliza por el uso e interpretación realizado por terceros. El material
+contenido en el portal consiste principalmente en información geográfica de la
+infraestructura de transporte masivo y no aborda circunstancias específicas
+relativas a personas concretas. TRANSMILENIO no se hace responsable de ningún
+daño o perjuicio sufrido por el usuario que se derive del acceso a este portal
+o del uso de la información o aplicaciones en el contenido. Cualquier duda,
+inquietud o comentario sobre el contenido de este portal puede informarnos a
+través de los canales de contacto descritos en la sección Fuente. Cualquier
+disputa que llegue a surgir en la interpretación de estos términos se resolverá
+bajo el amparo de la jurisprudencia colombiana.</gco:CharacterString>
+                    </useLimitation>
+                </MD_Constraints>
+            </resourceConstraints>
+            <language gco:nilReason="missing"/>
+            <characterSet>
+                <MD_CharacterSetCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_CharacterSetCode" codeListValue="utf8" codeSpace="ISOTC211/19115">utf8</MD_CharacterSetCode>
+            </characterSet>
+        </MD_DataIdentification>
+    </identificationInfo>
+    <distributionInfo>
+        <MD_Distribution>
+            <transferOptions>
+                <MD_DigitalTransferOptions>
+                    <onLine>
+                        <CI_OnlineResource>
+                            <linkage>
+                                <URL>https://gis.transmilenio.gov.co/arcgis/rest/services/Zonal/consulta_paraderos_zonales/FeatureServer/1</URL>
+                            </linkage>
+                        </CI_OnlineResource>
+                    </onLine>
+                </MD_DigitalTransferOptions>
+            </transferOptions>
+        </MD_Distribution>
+    </distributionInfo>
+</MD_Metadata>
