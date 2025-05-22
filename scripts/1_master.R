@@ -34,20 +34,7 @@ library(pacman)
 
 
 # Cargar paquetes necesarios
-p_load(tidyverse, 
-       rvest,
-       dplyr,
-       stargazer, 
-       foreign, 
-       skimr, # summary data
-       visdat,
-       sf, 
-       stringi, 
-       tm, 
-       leaflet,
-       osmdata,
-      tidyverse, 
-              rvest,
+p_load(rvest,
               dplyr,
               stargazer, 
               foreign, 
@@ -80,7 +67,9 @@ p_load(tidyverse,
               DMwR2,
               themis,
               spatialsample,
-              SuperLearner)
+              SuperLearner,
+              tidymodels, 
+              spatialsample)
 
 library("xtable")
 
