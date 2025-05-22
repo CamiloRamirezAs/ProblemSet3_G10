@@ -13,8 +13,10 @@ test_A  <- readRDS(file.path(stores_path, "test_data.rds"))
 train_A <- as.data.frame(train_A)
 test_A <- as.data.frame(test_A)
 
+# Seleccionar solo las variables que se usarán en la predicción
 train_A <- train_A %>% 
           dplyr::select(-geometry)
+
 
 # Base espaciales
 train_B <- readRDS(file.path(stores_path, "spatial_train.rds"))
@@ -28,6 +30,22 @@ test_raw <- test_A %>%
             left_join(test_B, by = "property_id")
 
 
+# Seleccionar solo las variables que se usarán en la predicción
+train_raw <- train_raw %>% 
+            dplyr::select(price, surface_total, bedrooms, bathrooms, type_housing,
+                          piscina, garaje, seguridad, balcon, gym, year,
+                          dist_parque, AVALUO_COM, dist_centComercial, dist_cai,
+                          dist_transmi, num_paraderos_sitp, num_colegios, ESTRATO, 
+                          num_restaurantes, lon, lat)
+
+test_raw <- test_raw %>% 
+            dplyr::select(surface_total, bedrooms, bathrooms, type_housing,
+                          piscina, garaje, seguridad, balcon, gym, year,
+                          dist_parque, AVALUO_COM, dist_centComercial, dist_cai,
+                          dist_transmi, num_paraderos_sitp, num_colegios, ESTRATO, 
+                          num_restaurantes, lon, lat)
+
+
 # 2. PREPROCESAMIENTO ----------------------------------------------------------
 
 # Asegurar que tipo de vivienda es un factor
@@ -38,8 +56,223 @@ test_raw$type_housing <- factor(test_raw$type_housing, levels = c("Casa", "Apart
 train_sf <- st_as_sf(train_raw, coords = c("lon", "lat"), crs = 4326)
 test_sf <- st_as_sf(test_raw, coords = c("lon", "lat"), crs = 4326)
 
+# Variable precio log-transformada
+train_sf <- train_sf %>% 
+            mutate(logprice = log(price))  # test_raw no tiene price, no hacemos log
 
-# 3. CREAR BLOQUES ESPACIALES --------------------------------------------------
+# Fórmula del modelo
+model_formula <- logprice ~ surface_total + bedrooms + bathrooms + type_housing +
+                piscina + garaje + seguridad + balcon + gym + year +
+                dist_parque + AVALUO_COM + dist_centComercial + dist_cai +
+                dist_transmi + num_paraderos_sitp + num_colegios + ESTRATO + 
+                num_restaurantes
+
+# Variables predictoras y target
+X_train <- model.matrix(model_formula, data = train_sf)[, -1]
+Y_train <- train_sf$logprice
+
+
+# 3. CLUSTERS ESPACIALES PARA LA VALIDACIÓN CRUZADA ----------------------------
+
+  # crear folds espaciales
+  set.seed(123)
+
+  block_folds <- spatial_block_cv(train_sf, v = 5)
+  print(block_folds)
+  
+  # Diagramar los folds
+  autoplot(block_folds)
+  p <- autoplot(block_folds)
+  
+  # Guardar como PNG
+  ggsave(filename = file.path(view_path, "SuperLearner1_folds_plot.png"), plot = p, width = 8, height = 6, dpi = 300)
+  
+  
+  # Obtener índices de validación para caret y SuperLearner
+  folds_SL <- lapply(block_folds$splits, function(split) {
+    # Extraer índices de la partición
+    as.integer(rownames(analysis(split)))  # Índices de las observaciones de entrenamiento
+  })
+  
+  # Número de particiones (folds)
+  V <- length(folds_SL)
+  
+  # Índices de entrenamiento para caret, que son análisis de splits:
+  index_caret <- folds_SL
+  
+
+# 4. XGBOOST -------------------------------------------------------------------
+  
+  # Función resumen personalizada con MAE
+  fiveStats <- function(data, lev = NULL, model = NULL) {
+              require(Metrics)
+              
+              # Calcular métricas
+              mae <- Metrics::mae(data$obs, data$pred)  # MAE
+              rmse <- Metrics::rmse(data$obs, data$pred)  # RMSE
+              r2 <- cor(data$obs, data$pred)^2  # R-squared
+              med_error <- median(abs(data$obs - data$pred))  # Median error
+              
+              # Retornar un named vector con el MAE como métrica principal
+              c(MAE = mae, RMSE = rmse, Rsquared = r2, MedianError = med_error)
+            }
+  
+  # Control de entrenamiento para tuning XGBoost con validación espacial
+  
+    train_control_spatial <- trainControl(
+                          method = "cv",
+                          index = index_caret, # Índices personalizados
+                          verboseIter = TRUE,
+                          summaryFunction = fiveStats,
+                          selectionFunction = "best",
+                          savePredictions = "final",
+                          returnResamp = "all"
+                        )
+  
+# Definir grid de hiperparámetros para XGBoost ---
+    xgb_grid <- expand.grid(
+      nrounds = c(250, 500),
+      max_depth = c(3, 5, 7),
+      eta = c(0.01, 0.05, 0.1),
+      gamma = c(0, 0.1, 1),
+      min_child_weight = c(1, 3, 5),  # Peso mínimo de un nodo hijo
+      colsample_bytree = c(0.6, 0.8),
+      subsample = 1
+    )
+    
+    xgb_grid
+    
+    
+    set.seed(123)
+    xgb_tune <- train(
+              x = X_train,
+              y = Y_train,
+              method = "xgbTree",
+              trControl = train_control_spatial,
+              tuneGrid = xgb_grid,
+              metric = "MAE",
+              verbosity = 0
+            )
+    
+    # Mejor conjunto de hiperparámetros
+    best_params <- xgb_tune$bestTune
+    print(best_params)
+    
+    
+  # 5. FUNCIÓN PARA INTEGRAR XGBOOST A SUPERLEARNER --------------------------
+    
+   # Asegurar que X_train es data.frame y Y_train numérico
+    X_train <- as.data.frame(X_train)
+    Y_train <- as.numeric(Y_train)
+    stopifnot(!anyNA(Y_train), !any(is.infinite(Y_train)))
+    
+    
+    
+    
+    # Crear función para integrar XGBoost en SuperLearner
+    SL.xgboost.custom <- function(Y, X, newX, family, obsWeights, ...) {
+                # Asegurar que los datos de entrada sean compatibles con XGBoost
+                if (!is.matrix(X)) X <- as.matrix(X)
+                if (!is.matrix(newX)) newX <- as.matrix(newX)
+                          
+                # Parámetros del modelo basados en `best_params`
+                params <- list(
+                  booster = "gbtree",                        # Usar árboles de decisión
+                  objective = "reg:squarederror",            # Función objetivo para regresión
+                  max_depth = best_params$max_depth,         # Profundidad máxima de los árboles
+                  eta = best_params$eta,                     # Tasa de aprendizaje
+                  gamma = best_params$gamma,                 # Regularización
+                  colsample_bytree = best_params$colsample_bytree,   # Submuestreo de columnas
+                  min_child_weight = best_params$min_child_weight,   # Tamaño mínimo de los nodos hijos
+                  subsample = best_params$subsample,                 # Submuestreo de filas
+                  eval_metric = "mae"                                # Métrica de evaluación: MAE
+                )
+                
+                # Crear matriz para entrenamiento y predicción
+                dtrain <- xgb.DMatrix(data = X, label = Y, weight = obsWeights) # Datos de entrenamiento
+                dtest <- xgb.DMatrix(data = newX)                              # Datos para predicción
+                
+                # Entrenar el modelo
+                xgb_model <- xgb.train(
+                  params = params,
+                  data = dtrain,
+                  nrounds = best_params$nrounds,
+                  verbose = 0
+                )
+                
+                # Realizar predicciones
+                pred <- predict(xgb_model, dtest)
+                
+                # Devolver los resultados
+                fit <- list(object = xgb_model)
+                out <- list(pred = pred, fit = fit)
+                class(out$fit) <- c("SL.xgboost.custom")
+                return(out)
+              }
+              
+              # Crear una función predictiva para el modelo XGBoost
+              predict.SL.xgboost.custom <- function(object, newdata, ...) {
+                                          if (!is.matrix(newdata)) newdata <- as.matrix(newdata)
+                                          dnew <- xgb.DMatrix(data = newdata)
+                                          predict(object$object, dnew)
+    }
+    
+    
+  # Crear folds balanceados con vfold_cv y extraer índices
+  set.seed(123)
+  vfolds <- vfold_cv(data = data.frame(Y=Y_train), v = 5, strata = "Y")
+  
+  train_folds <- lapply(vfolds$splits, function(split) {
+    as.integer(rownames(analysis(split)))
+  })
+  valid_folds <- lapply(vfolds$splits, function(split) {
+    as.integer(rownames(assessment(split)))
+  })
+
+  
+# 6. SUPERLEARNER --------------------------------------------------------------
+    
+    set.seed(123)
+
+    # Crear folds (particiones) con vfold_cv
+    vfolds <- vfold_cv(data = data.frame(Y=Y_train), v = 5, strata = "Y")
+    
+    # Extraer índices de entrenamiento y validación
+    train_folds <- lapply(vfolds$splits, function(split) analysis(split) %>% rownames() %>% as.integer())
+    valid_folds <- lapply(vfolds$splits, function(split) assessment(split) %>% rownames() %>% as.integer())
+    
+    # Ver tamaños para confirmar balance
+    sapply(train_folds, length)
+    sapply(valid_folds, length)
+    
+    
+    # Definir la lista de modelos en el Super Learner
+    learners <- c("SL.lm", "SL.xgboost.custom")
+    
+    # Entrenar el Super Learner
+    set.seed(123)
+    fit_SL <- SuperLearner(
+      Y = Y_train,
+      X = X_train,
+      SL.library = learners,
+      method = "method.NNloglik",    # No-Negative Least Squares para combinar predicciones
+      family = gaussian(),       # Asume que el problema es de regresión
+      cvControl = list(V = V, validRows = train_folds),
+      verbose = TRUE
+    )
+    
+    # Validación interna del modelo
+    val_predictions <- predict(fit_SL, newdata = X_train, onlySL = TRUE)$pred
+    mae_train <- mean(abs(exp(Y_train) - exp(val_predictions)))
+    cat("MAE en entrenamiento:", mae_train, "\n")
+    
+    
+    
+    
+    
+    
+
+##########################################################################
 
 # Crear bloques espaciales
 
@@ -81,7 +314,9 @@ rf <- ranger::ranger(
           piscina + garaje + seguridad + balcon + gym + year +
           dist_parque + AVALUO_COM + dist_centComercial + dist_cai +
           dist_transmi + num_paraderos_sitp + num_colegios + ESTRATO + 
-          num_restaurantes,
+          num_restaurantes
+  
+  ,
   data = train,
   num.trees = 1000,        # Incrementar número de árboles
   mtry = 5, # Elegir sqrt del número de variables

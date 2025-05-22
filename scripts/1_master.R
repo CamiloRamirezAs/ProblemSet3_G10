@@ -80,7 +80,8 @@ p_load(tidyverse,
               DMwR2,
               themis,
               spatialsample,
-              SuperLearner)
+              SuperLearner,
+              rsample)
 
 library("xtable")
 
