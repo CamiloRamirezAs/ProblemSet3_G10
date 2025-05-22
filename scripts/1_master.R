@@ -78,7 +78,8 @@ p_load(tidyverse,
               MLmetrics,
               xgboost,
               DMwR2,
-              themis)
+              themis,
+      spatialsample)
 
 library("xtable")
 

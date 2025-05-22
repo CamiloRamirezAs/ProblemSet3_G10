@@ -122,6 +122,22 @@ plot(rf_tuned)
 # Mostrar el mejor modelo
 print(rf_tuned)
 
+# Crear la gráfica de importancia de variables
+vip_plot <- vip(rf_tuned)
+vip_plot
+
+# Guardar la gráfica como archivo PNG
+vip_file <- file.path(submission_path, "RF_CV_variable_importance.png")
+ggplot2::ggsave(
+  filename = vip_file,
+  plot = vip_plot,
+  width = 8,   # Ancho en pulgadas
+  height = 6,  # Alto en pulgadas
+  dpi = 300    # Resolución en puntos por pulgada
+)
+
+cat("La gráfica de importancia de variables se guardó como:", vip_file, "\n")
+
 # Guardar el mejor modelo en un archivo de texto
 best_model_file <- "best_model_rf.txt"
 write(
@@ -166,7 +182,7 @@ kaggle_submission <- data.frame(
 num_trees_val <- 1000
 
 # Guardar archivo con los hiperparámetros en el nombre
-filename <- paste0(
+file_name <- paste0(
   "RandomForest_CV_trees", num_trees_val,
   "_mtry", rf_tuned$bestTune$mtry,
   "_nodesize", rf_tuned$bestTune$min.node.size,
