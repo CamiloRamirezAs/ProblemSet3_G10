@@ -232,39 +232,28 @@ Y_train <- train_sf$logprice
   
 # 6. SUPERLEARNER --------------------------------------------------------------
     
-    set.seed(123)
-
-    # Crear folds (particiones) con vfold_cv
-    vfolds <- vfold_cv(data = data.frame(Y=Y_train), v = 5, strata = "Y")
-    
-    # Extraer índices de entrenamiento y validación
-    train_folds <- lapply(vfolds$splits, function(split) analysis(split) %>% rownames() %>% as.integer())
-    valid_folds <- lapply(vfolds$splits, function(split) assessment(split) %>% rownames() %>% as.integer())
-    
-    # Ver tamaños para confirmar balance
-    sapply(train_folds, length)
-    sapply(valid_folds, length)
-    
-    
-    # Definir la lista de modelos en el Super Learner
-    learners <- c("SL.lm", "SL.xgboost.custom")
-    
-    # Entrenar el Super Learner
-    set.seed(123)
-    fit_SL <- SuperLearner(
-      Y = Y_train,
-      X = X_train,
-      SL.library = learners,
-      method = "method.NNloglik",    # No-Negative Least Squares para combinar predicciones
-      family = gaussian(),       # Asume que el problema es de regresión
-      cvControl = list(V = V, validRows = train_folds),
-      verbose = TRUE
+  
+  # Definir learners y número de folds
+  learners <- c("SL.lm", "SL.xgboost.custom")
+  V <- length(train_folds)
+  
+  # Entrenar SuperLearner usando folds con índices de entrenamiento (train_folds)
+  set.seed(123)
+  fit_SL <- SuperLearner(
+            Y = Y_train,
+            X = X_train,
+            SL.library = learners,
+            method = "method.NNLS",    # No-Negative Least Squares para combinar predicciones
+            family = gaussian(),       # Asume que el problema es de regresión
+            cvControl = list(V = V, validRows = train_folds),
+            verbose = TRUE
     )
     
-    # Validación interna del modelo
-    val_predictions <- predict(fit_SL, newdata = X_train, onlySL = TRUE)$pred
-    mae_train <- mean(abs(exp(Y_train) - exp(val_predictions)))
-    cat("MAE en entrenamiento:", mae_train, "\n")
+  
+  # Validación interna y cálculo MAE en escala original
+  val_predictions <- predict(fit_SL, newdata = X_train, onlySL = TRUE)$pred
+  mae_train <- mean(abs(exp(Y_train) - exp(val_predictions)))
+  cat("MAE en entrenamiento:", mae_train, "\n")
     
     
     
