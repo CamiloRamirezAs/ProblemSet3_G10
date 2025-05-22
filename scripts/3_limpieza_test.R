@@ -22,42 +22,17 @@ sapply(test, class)
 vis_dat(test)
 skim(test)
 
-# 2. PROPIEDADES DUPLICADAS  ---------------------------------------------------
 
-#Identificar propiedades duplicadas y dejar solo una
-test <- test %>%
-  group_by(year, month, surface_total, surface_covered, rooms, bedrooms, bathrooms, price, lat, lon) %>%
-  mutate(dup = if_else(n() > 1, 1, 0)) %>%
-  ungroup()
-table(test$dup)
-
-test_nodups <- test %>%
-  group_by(year, month, surface_total, surface_covered, rooms, bedrooms, bathrooms, price, lat, lon) %>%
-  slice_head(n = 1) %>%  
-  ungroup()
-
-#Identificar propiedades que se publican varias veces en distintos momentos y dejar la más reciente
-test_nodups <- test %>%
-  group_by(surface_total, surface_covered, rooms, bedrooms, bathrooms, lat, lon) %>%
-  arrange(desc(year), desc(month)) %>% 
-  mutate(dup = case_when(
-    n() > 1 ~ row_number(),  # Si hay duplicados, asigna un número secuencial (1 será la más reciente)
-    TRUE ~ 0                 # Si no hay duplicados, asigna 0
-  )) %>%
-  ungroup() %>%
-  filter(dup %in% c(0, 1))  
-table(test_nodups$dup)
-
-# 3. lIMPIEZA DATOS: CORREGIR VARIABLES EXISTENTES Y CREAR NUEVAS -------------
+# 2. lIMPIEZA DATOS: CORREGIR VARIABLES EXISTENtest Y CREAR NUEVAS -------------
 
 # Tildes y caracteres especiales del español
-test_nodups$description_adj <- stri_trans_general(str = test_nodups$description, id = "Latin-ASCII")
+test$description_adj <- stri_trans_general(str = test$description, id = "Latin-ASCII")
 
 # Minuscula
-test_nodups$description_adj <- tolower(test_nodups$description)
+test$description_adj <- tolower(test$description)
 
 # Espacios
-test_nodups$description_adj <- gsub("\\s+", " ", test_nodups$description_adj)
+test$description_adj <- gsub("\\s+", " ", test$description_adj)
 
 ### Extraer la superficie de la propiedad de la descripcion (surface_adj)
 # Definir palabras clave a excluir
@@ -66,13 +41,13 @@ exclusion_words <- c("terraza", "balc[oó]n", "balcn", "patio", "chimenea",
                      "piscina", "gimnasio", "alcoba", "habitacion", "bano",
                      "garajes", "parque", "balcones", "bbq", "altura", "terrazas")
 
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(
-    # Extraer hasta 5 palabras antes y después del match
+    # Extraer hasta 5 palabras antest y después del match
     contexto = str_extract(
       description,
       paste0(
-        "(\\b(?:\\w+\\b\\W+){0,5})", # hasta 5 palabras antes
+        "(\\b(?:\\w+\\b\\W+){0,5})", # hasta 5 palabras antest
         "(\\b\\d+(\\.\\d+)?\\s?(m\\^?\\d{1,2}|m²|m2|mts2|mts|mt2|mtr?s?|mtrs2|mtrs|metrs2?|metros cuadrados?|mas|ms|m\\d{1,2}|m))", # unidades de superficie
         "((\\W+\\b\\w+\\b){0,5})" # hasta 5 palabras después
       )
@@ -95,10 +70,10 @@ test_nodups <- test_nodups %>%
     )
   )
 
-summary(test_nodups$surface_adj)
+summary(test$surface_adj)
 
 #Cuando superficie esta en forma x frente x fondo (area)
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(
     # Extraer dimensiones con formato "número unidad x número unidad"
     dimension = str_extract(
@@ -122,7 +97,7 @@ test_nodups <- test_nodups %>%
   )
 
 #buscar dentro de descripcion -> "area construida"
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(
     area_etiquetada = str_extract(
       description_adj,
@@ -137,27 +112,27 @@ test_nodups <- test_nodups %>%
 
 ###Reemplazos
 #1. Asignar el valor de 'area_construida' cuando surface_total es NA
-test_nodups$surface_total <- ifelse(
-  is.na(test_nodups$surface_total),  
-  test_nodups$area_construida,      
-  test_nodups$surface_total         
+test$surface_total <- ifelse(
+  is.na(test$surface_total),  
+  test$area_construida,      
+  test$surface_total         
 )
 
 #2. Asignar el valor de 'surface_adj' cuando existe
-test_nodups$surface_total <- ifelse(
-  is.na(test_nodups$surface_total) & test_nodups$surface_adj > 25, 
-  test_nodups$surface_adj,  
-  test_nodups$surface_total
+test$surface_total <- ifelse(
+  is.na(test$surface_total) & test$surface_adj > 25, 
+  test$surface_adj,  
+  test$surface_total
 )
 
 #3. Asignar el valor de 'area' cuando existe
-test_nodups$surface_total <- ifelse(
-  is.na(test_nodups$surface_total) & test_nodups$area > 25, 
-  test_nodups$area,  
-  test_nodups$surface_total
+test$surface_total <- ifelse(
+  is.na(test$surface_total) & test$area > 25, 
+  test$area,  
+  test$surface_total
 )
 
-summary(test_nodups$surface_total) ##4022 NA
+summary(test$surface_total) ##6,142 NA
 
 ###. Extraer tipo de vivienda de la descripcion: Casa o Apartamento -
 keywords_apartamento <- c(
@@ -169,7 +144,7 @@ keywords_apartamento <- c(
 )
 
 #Buscar en "title" el tipo de propiedad
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(type_housing = case_when(
     str_detect(str_to_lower(title), "casa") ~ "Casa", 
     str_detect(str_to_lower(title), str_c("\\b(", str_c(keywords_apartamento, collapse = "|"), ")\\b")) ~ "Apartamento",
@@ -177,7 +152,7 @@ test_nodups <- test_nodups %>%
   ))
 
 #Buscar en "descripcion" el tipo de propiedad
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(type_housing_2 = case_when(
     str_detect(str_to_lower(description), "casa") ~ "Casa", 
     str_detect(str_to_lower(description), str_c("\\b(", str_c(keywords_apartamento, collapse = "|"), ")\\b")) ~ "Apartamento",
@@ -185,7 +160,7 @@ test_nodups <- test_nodups %>%
   ))
 
 # Completar "tipo_vivienda" con info de la descripción si estaba como "otro"
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(type_housing = if_else(
     type_housing == "otro",
     type_housing_2,
@@ -193,18 +168,18 @@ test_nodups <- test_nodups %>%
   ))
 
 # Cuando no logro identificar asigno el de la variable original (76 casos)
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(type_housing = if_else(
     type_housing == "otro",
     property_type,
     type_housing
   ))
 
-table(test_nodups$type_housing)
-table(test_nodups$property_type)
+table(test$type_housing)
+table(test$property_type)
 
 ###. Extraer # de baños
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate(
     # Extraer número de baños con formato numérico o en palabras
     num_bathrooms = str_extract(description_adj, "(?i)(\\d+)\\s*(baños?|banos?)|(?:uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\\s*(baños?|banos?)")
@@ -230,10 +205,10 @@ test_nodups <- test_nodups %>%
     num_bathrooms = if_else(num_bathrooms >= 22, NA_real_, num_bathrooms)
   )
 
-table(is.na(test_nodups$bathrooms))
+table(is.na(test$bathrooms))
 
 # Asignar el valor de 'num_bathrooms' cuando bathrooms es NA
-test_nodups <- test_nodups %>%
+test <- test %>%
   mutate( bathrooms = if_else(
     is.na(bathrooms), 
     num_bathrooms, 
@@ -242,47 +217,47 @@ test_nodups <- test_nodups %>%
   )
 
 ###Dummy de presencia de piscina
-test_nodups$piscina <- ifelse(agrepl("piscina", test_nodups$description_adj, max.distance = 1), 1, 0)
+test$piscina <- ifelse(agrepl("piscina", test$description_adj, max.distance = 1), 1, 0)
 
 ###Dummy de presencia de garaje
-test_nodups$garaje <- ifelse(
-  agrepl("garaje", test_nodups$description_adj, max.distance = 1) |
-    agrepl("parqueadero", test_nodups$description_adj, max.distance = 1),
+test$garaje <- ifelse(
+  agrepl("garaje", test$description_adj, max.distance = 1) |
+    agrepl("parqueadero", test$description_adj, max.distance = 1),
   1, 0
 )
 
 ###Dummy de vigilancia
-test_nodups$seguridad <- ifelse(
-  agrepl("vigilancia", test_nodups$description_adj, max.distance = 1) |
-    agrepl("seguridad", test_nodups$description_adj, max.distance = 1),
+test$seguridad <- ifelse(
+  agrepl("vigilancia", test$description_adj, max.distance = 1) |
+    agrepl("seguridad", test$description_adj, max.distance = 1),
   1, 0
 )
 
 ##Dummy de balcon
-test_nodups$balcon <- ifelse(
-  agrepl("balcon", test_nodups$description_adj, max.distance = 1) |
-    agrepl("terraza", test_nodups$description_adj, max.distance = 1),
+test$balcon <- ifelse(
+  agrepl("balcon", test$description_adj, max.distance = 1) |
+    agrepl("terraza", test$description_adj, max.distance = 1),
   1, 0
 )
 
 ##Dummy de gimnasio
-test_nodups$gym <- ifelse(
-  agrepl("gimnasio", test_nodups$description_adj, max.distance = 1) |
-    agrepl("gym", test_nodups$description_adj, max.distance = 1),
+test$gym <- ifelse(
+  agrepl("gimnasio", test$description_adj, max.distance = 1) |
+    agrepl("gym", test$description_adj, max.distance = 1),
   1, 0
 )
 
-#4.IMPUTACION   --------------------------------------------------------------
+#3.IMPUTACION   --------------------------------------------------------------
 
 #Para evitar data leakage imputamos en test los mismos valores para los missings
-test_nodups$bathrooms[is.na(test_nodups$bathrooms)] <- 2
-test_nodups$surface_total[is.na(test_nodups$surface_total)] <- 121
+test$bathrooms[is.na(test$bathrooms)] <- 2
+test$surface_total[is.na(test$surface_total)] <- 121
 
-test_nodups <- test_nodups %>% select(property_id, city, month, year, 
+test <- test %>% select(property_id, city, month, year, 
                                         surface_total, bedrooms, bathrooms, 
                                         type_housing, description_adj, lat, lon,
                                         piscina, garaje, seguridad, balcon, gym)
 
 # Guardar los archivos en formato .rds en la carpeta stores
-saveRDS(test_nodups, file.path(stores_path, "test_data.rds"))
+saveRDS(test, file.path(stores_path, "test_data.rds"))
 
