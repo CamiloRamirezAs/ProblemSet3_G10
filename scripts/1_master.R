@@ -20,6 +20,7 @@ path_main <- here()
 raw_path <- file.path(path_main, "raw") 
 scripts_path  <- file.path(path_main, "scripts") 
 stores_path   <- file.path(path_main, "stores")
+submission_path   <- file.path(path_main, "submission")
 view_path     <- file.path(path_main, "views")
 
 #-----------------------------------------------------------------------------//
@@ -44,6 +45,41 @@ p_load(tidyverse,
        stringi, 
        tm, 
        leaflet,
-       osmdata
-)
+       osmdata,
+      tidyverse, 
+              rvest,
+              dplyr,
+              stargazer, 
+              foreign, 
+              skimr, # summary data
+              visdat, # visualizing missing data
+              corrplot, 
+              scales, 
+              broom,
+              gridExtra, 
+              survey,
+              VIM, 
+              fastDummies, 
+              caret,
+              boot,
+              DescTools,
+              Metrics,
+              MLmetrics,
+              rpart,
+              rpart.plot,
+              ipred,
+              ranger, 
+              ggplot2, 
+              randomForest, 
+              adabag,
+              pROC,
+              recipes,
+              vip,
+              MLmetrics,
+              xgboost,
+              DMwR2,
+              themis)
 
+library("xtable")
+
+#install.packages("xtable", dependencies = TRUE, type = "source")
