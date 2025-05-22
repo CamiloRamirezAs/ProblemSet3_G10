@@ -79,7 +79,8 @@ p_load(tidyverse,
               xgboost,
               DMwR2,
               themis,
-      spatialsample)
+      spatialsample,
+      SuperLearner)
 
 library("xtable")
 
