@@ -71,8 +71,10 @@ p_load(rvest,
               rsample,
               tidymodels, 
               spatialsample,
-       nnls,
-       data.table)
-library("xtable")
+               nnls,
+               data.table,
+               xtable)
+
+#library("xtable")
 
 #install.packages("xtable", dependencies = TRUE, type = "source")
