@@ -253,7 +253,7 @@ cat("MAE en entrenamiento:", mae_train, "\n")
 pred_test_log <- predict(fit_SL, newdata = X_test, onlySL = TRUE)$pred
 
 # Volver a escala original (precio)
-pred_test_price <- exp(pred_test_log)
+pred_test_price <- round(exp(pred_test_log))
 
 # Crear data.frame con property_id y predicción
 submission <- data.frame(
@@ -272,8 +272,6 @@ best_params_str <- paste0(
 # Nombre del archivo para guardar las predicciones
 file_name <- paste0("SuperLearner_lm_xgboost_", best_params_str, ".csv")
 
-# Crear archivo de submission
-submission <- test_predic %>% select(property_id, price)
 
 # Guardar el archivo CSV
 write.csv(submission, file = file.path(submission_path, file_name), row.names = FALSE)
