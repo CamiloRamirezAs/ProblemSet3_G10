@@ -4,14 +4,21 @@
 # Fecha: 3 de mayo 2025
 #-----------------------------------------------------------------------------//
 
-train =  readRDS(file.path(stores_path, "train_data.rds"))
+train_data =  readRDS(file.path(stores_path, "train_data.rds"))
+train_spatial =  readRDS(file.path(stores_path, "train_spatial.rds"))
+train = merge(train_data, train_spatial, by = c("property_id"), all = T)
 train = as.data.frame(train) 
 
 #-----------------------------------------------------------------------------//
 
-test =  readRDS(file.path(stores_path, "test_data.rds"))
+test_data =  readRDS(file.path(stores_path, "test_data.rds"))
+test_spatial =  readRDS(file.path(stores_path, "test_spatial.rds"))
+test = merge(test_data, test_spatial, by = c("property_id"), all = T)
 test = as.data.frame(test)
+
 rownames(test) <- test$property_id
+colnames(test)
+
 test = test %>% select(-c(lon, lat, city, description_adj, month, year)) 
 
 x_test <- scale(model.matrix( ~ . - property_id - 1, data = test))
@@ -20,10 +27,9 @@ x_test <- model.matrix( ~ . - property_id - 1, data = test) %>% scale()
 
 #-----------------------------------------------------------------------------//
 rownames(train) <- train$property_id
+colnames(train)
 train = train %>% select(-c(lon, lat, city, geometry, description_adj, month, year)) 
-
 x <- scale(model.matrix(price ~ . - property_id - 1, data = train))
-x <- scale(model.matrix(price ~ . - property_id  - 1, data = train))
 x <- model.matrix(price ~ . - property_id - 1, data = train) %>% scale()
 y = train$price
 #-----------------------------------------------//
@@ -56,9 +62,16 @@ history <- modnn %>% fit(
                       callbacks = list(early_stop))
 
 npred <- predict(modnn, x)
+npred_vec <- as.vector(npred)
+mae <- mean(abs(y - npred_vec))
+print(mae)
+
+options(scipen = 999)  # Desactiva notación científica
 
 hist(train$price)
 summary(train$price)
+summary(npred)
+
 
 prueba = data.frame(property_id = train$property_id,
                     predicho = predict(modnn, x), 
@@ -82,10 +95,10 @@ ggplot(prueba, aes(x = observado)) +
 #-----------------------------------------------------------------------------//
 
 
-npred <- predict(modnn, x_test)
+npred_test <- predict(modnn, x_test)
 
 submit = data.frame(property_id = test$property_id, 
-                    price = npred )
+                    price = predict(modnn, x_test) )
 
 
 head(rownames(x_test)) == head(as.character(test$property_id))
