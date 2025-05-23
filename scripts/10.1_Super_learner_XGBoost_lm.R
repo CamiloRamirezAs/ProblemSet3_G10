@@ -14,9 +14,9 @@ test_A  <- readRDS(file.path(stores_path, "test_data.rds"))
 train_A <- as.data.frame(train_A)
 test_A <- as.data.frame(test_A)
 
-# Seleccionar solo las variables que se usarán en la predicción
+# Eliminar la geometría innecesaria
 train_A <- train_A %>% 
-  dplyr::select(-geometry)
+            dplyr::select(-geometry)
 
 
 # Base espaciales
@@ -32,58 +32,68 @@ test_raw <- test_A %>%
 
 
 # Seleccionar solo las variables que se usarán en la predicción
-train_raw <- train_raw %>% 
-  dplyr::select(property_id, price, surface_total, bedrooms, bathrooms, type_housing,
-                piscina, garaje, seguridad, balcon, gym, year,
-                dist_parque, AVALUO_COM, dist_centComercial, dist_cai,
-                dist_transmi, num_paraderos_sitp, num_colegios, ESTRATO, 
-                num_restaurantes, lon, lat)
+vars_model <- c("property_id", "price", "surface_total", "bedrooms", "bathrooms", "type_housing",
+                "piscina", "garaje", "seguridad", "balcon", "gym", "year",
+                "dist_parque", "AVALUO_COM", "dist_centComercial", "dist_cai",
+                "dist_transmi", "num_paraderos_sitp", "num_colegios", "ESTRATO", 
+                "num_restaurantes", "lon", "lat")
 
-test_raw <- test_raw %>% 
-  dplyr::select(property_id, surface_total, bedrooms, bathrooms, type_housing,
-                piscina, garaje, seguridad, balcon, gym, year,
-                dist_parque, AVALUO_COM, dist_centComercial, dist_cai,
-                dist_transmi, num_paraderos_sitp, num_colegios, ESTRATO, 
-                num_restaurantes, lon, lat)
+test_vars_model <- setdiff(vars_model, "price")  # test no tiene price
+
+train_raw <- train_raw %>% select(all_of(vars_model))
+test_raw  <- test_raw  %>% select(all_of(test_vars_model))
 
 
 # 2. PREPROCESAMIENTO ----------------------------------------------------------
 
-# Asegurar que tipo de vivienda es un factor
-train_raw$type_housing <- factor(train_raw$type_housing, levels = c("Casa", "Apartamento"))
-test_raw$type_housing <- factor(test_raw$type_housing, levels = c("Casa", "Apartamento"))
-
-# Crear variable dummy si es apartamento igual a 1 y casa igual a 0
+# Crear dummy para apartamento
 train_raw <- train_raw %>%
-  mutate(apto_casa = as.integer(type_housing == "Apartamento"))%>%
-  select(-type_housing)
+            mutate(
+              type_housing = factor(type_housing, levels = c("Casa", "Apartamento")),
+              apto_casa = as.integer(type_housing == "Apartamento")
+            ) %>%
+            select(-type_housing)
 
 test_raw <- test_raw %>%
-  mutate(apto_casa = as.integer(type_housing == "Apartamento"))%>%
-  select(-type_housing)
+            mutate(
+              type_housing = factor(type_housing, levels = c("Casa", "Apartamento")),
+              apto_casa = as.integer(type_housing == "Apartamento")
+            ) %>%
+            select(-type_housing)
 
-# Crear objetos sf con CRS para lon/lat (WGS84 - EPSG:4326)
-train_sf <- st_as_sf(train_raw, coords = c("lon", "lat"), crs = 4326)
-test_sf <- st_as_sf(test_raw, coords = c("lon", "lat"), crs = 4326)
+
+# Crear objetos sf con CRS para lon/lat (WGS84 - EPSG:4326) sin eliminar columnas
+train_sf <- st_as_sf(train_raw, coords = c("lon", "lat"), crs = 4326, remove = FALSE)
+test_sf  <- st_as_sf(test_raw, coords = c("lon", "lat"), crs = 4326, remove = FALSE)
 
 # Variable precio log-transformada
 train_sf <- train_sf %>% 
-  mutate(logprice = log(price))  # test_raw no tiene price, no hacemos log
+          mutate(logprice = log(price))  # test_raw no tiene price, no hacemos log
 
 # Fórmula del modelo
 model_formula <- logprice ~ surface_total + bedrooms + bathrooms + apto_casa +
+                piscina + garaje + seguridad + balcon + gym + year +
+                dist_parque + AVALUO_COM + dist_centComercial + dist_cai +
+                dist_transmi + num_paraderos_sitp + num_colegios + ESTRATO + 
+                num_restaurantes
+
+# Guardar property_id antes de crear la matriz de predictores
+property_ids_test <- test_raw$property_id
+
+# Crear matriz de predictores solo con variables independientes
+model_formula_rhs <- as.formula("~ surface_total + bedrooms + bathrooms + apto_casa +
   piscina + garaje + seguridad + balcon + gym + year +
   dist_parque + AVALUO_COM + dist_centComercial + dist_cai +
-  dist_transmi + num_paraderos_sitp + num_colegios + ESTRATO + 
-  num_restaurantes
+  dist_transmi + num_paraderos_sitp + num_colegios + ESTRATO + num_restaurantes")
+
+X_test <- model.matrix(model_formula_rhs, data = test_raw)[, -1, drop = FALSE]
+
 
 # Variables predictoras y target
 X_train <- model.matrix(model_formula, data = train_sf)[, -1]
 Y_train <- train_sf$logprice
 
-
-model_formula_rhs <- as.formula("~ .")  # solo las variables independientes
-X_test <- model.matrix(model_formula_rhs, data = test_raw)[, -1, drop = FALSE]
+X_test <- model.matrix(model_formula_rhs, data = test_sf)[, -1]
 
 
 # 3. CLUSTERS ESPACIALES PARA LA VALIDACIÓN CRUZADA ----------------------------
@@ -242,8 +252,14 @@ cat("MAE en entrenamiento:", mae_train, "\n")
 # Obtener predicción en escala log
 pred_test_log <- predict(fit_SL, newdata = X_test, onlySL = TRUE)$pred
 
-# Agregar la predicción transformada a test_raw
-test_predic <- test_raw %>% mutate(price = exp(pred_test_log))
+# Volver a escala original (precio)
+pred_test_price <- exp(pred_test_log)
+
+# Crear data.frame con property_id y predicción
+submission <- data.frame(
+                property_id = property_ids_test,  # Guardado antes de eliminar columnas
+                price = pred_test_price
+              )
 
 # Crear nombre dinámico para el archivo con los hiperparámetros usados
 best_params_str <- paste0(
