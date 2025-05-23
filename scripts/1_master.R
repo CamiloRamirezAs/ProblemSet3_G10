@@ -68,13 +68,11 @@ p_load(rvest,
               themis,
               spatialsample,
               SuperLearner,
-<<<<<<< HEAD
-              rsample)
-=======
+              rsample,
               tidymodels, 
-              spatialsample)
->>>>>>> 03fff4f31f737dcfa986e3a8760754ca1f6a2328
-
+              spatialsample,
+       nnls,
+       data.table)
 library("xtable")
 
 #install.packages("xtable", dependencies = TRUE, type = "source")
