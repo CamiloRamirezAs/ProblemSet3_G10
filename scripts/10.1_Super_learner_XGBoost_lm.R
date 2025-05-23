@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------//
 # Modelo Super learner: XGBoost & lineal regression
 # Problem Set 3 G10 - BDML 202501
-# Fecha actualización: 22 de mayo de 2025
+# Fecha actualización: 23 de mayo de 2025
 #-----------------------------------------------------------------------------//
 
 

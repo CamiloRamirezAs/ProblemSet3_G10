@@ -74,7 +74,9 @@ p_load(rvest,
                nnls,
                data.table,
                xtable,
-       sf)
+       sf,
+       blockCV,
+       gbm)
 
 #library("xtable")
 
