@@ -157,9 +157,10 @@ Y_train <- train_sf$logprice
     # Mejor conjunto de hiperparámetros
     best_params <- xgb_tune$bestTune
     print(best_params)
+
     
-    
-  # 5. FUNCIÓN PARA INTEGRAR XGBOOST A SUPERLEARNER --------------------------
+        
+# 5. FUNCIÓN PARA INTEGRAR XGBOOST A SUPERLEARNER --------------------------
     
    # Asegurar que X_train es data.frame y Y_train numérico
     X_train <- as.data.frame(X_train)
@@ -254,13 +255,54 @@ Y_train <- train_sf$logprice
   val_predictions <- predict(fit_SL, newdata = X_train, onlySL = TRUE)$pred
   mae_train <- mean(abs(exp(Y_train) - exp(val_predictions)))
   cat("MAE en entrenamiento:", mae_train, "\n")
+
+
+# 7. PREDICCIÓN EN TEST PARA KAGGLE
+
+  # Asegurarse que X_test tenga las mismas columnas (sin intercepto)
+  X_test <- model.matrix(model_formula, data = test_raw)[, -1, drop = FALSE]
     
-    
-    
-    
-    
+  # Obtener predicción en escala log (porque entrenaste con log(Y))
+  pred_test_log <- predict(fit_SL, newdata = X_test, onlySL = TRUE)$pred
+  
+  # Agregar la predicción transformada a test_raw
+  test_predic <- test_raw %>% mutate(price = exp(pred_test_log))
+  
+  # Crear nombre dinámico para el archivo con los hiperparámetros usados
+  best_params_str <- paste0(
+                    "xgb_maxdepth", best_params$max_depth,
+                    "_eta", best_params$eta,
+                    "_gamma", best_params$gamma,
+                    "_nrounds", best_params$nrounds
+                  )
+  
+  # Nombre del archivo para guardar las predicciones
+  file_name <- paste0("SuperLearner_lm_xgboost_", best_params_str, ".csv")
+  
+  # Seleccionar solo las columnas requeridas para submission (por ejemplo: id y precio)
+  submission <- test_predic %>% select(property_id, price)
     
 
+  # Guardar el archivo CSV sin índices
+  write.csv(submission, file = file.path(submission_path, file_name), row.names = FALSE)
+  
+  cat("Archivo de predicción guardado en:", file.path(submission_path, file_name), "\n")
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 ##########################################################################
 
 # Crear bloques espaciales
