@@ -73,7 +73,8 @@ p_load(rvest,
               spatialsample,
                nnls,
                data.table,
-               xtable)
+               xtable,
+       sf)
 
 #library("xtable")
 
