@@ -1,280 +1,149 @@
-#------------------------------------------------------------------------------#
-# Modelos: bagging y boosting ----
-#------------------------------------------------------------------------------#
-
-train = readRDS(file.path(stores_path, "upsampled_train_data.rds"))
-#train = readRDS(file.path(stores_path, "train_data.rds"))
-test  = readRDS(file.path(stores_path, "test_data.rds"))
-
-intersect(colnames(train), colnames(test))
-
-#---------------------------
-# Ajuste de variables y cols
-#---------------------------
-
-train = train[, !duplicated(colnames(train))]
-train = train %>% dplyr::mutate(Pobre_d = ifelse(Pobre == "Pobre", 1, 0))
-
-#Pobre_num = ifelse(train$Pobre_d == "Si", 1, 0)
-
-#---------------------------
-# Ajuste de variables factor
-#---------------------------
-X_1 = c("hacinamiento", 
-        "Clase",
-        "jefe_mujer", 
-        "prop_ocu_pet", 
-        "jefe_edad",
-        "jefe_nivel_educ",
-        "N_mayor_dependiente", 
-        "prop_ina_pet",
-        "jefe_pension", 
-        "N_menores")
-
-summary(train$hacinamiento)
-summary(train$jefe_edad)
-summary(train$N_menores)
-table(train$jefe_mujer)
-summary(train$prop_ocu_pet)
-summary(train$N_mayor_dependiente)
-table(train$jefe_nivel_educ)
-table(train$jefe_pension)
-table(train$jefe_salud_sub)
-table(train$Pobre)
-
-train = train %>% mutate(
-        Pobre_d = ifelse(Pobre == "Pobre", 1, 0),
-        hacinamiento_f = factor(ifelse(hacinamiento > 3, 1, 0), labels = c("Si", "No")), # porque es el a lo que se aproxima el 3 cuantil
-        jefe_mayor_f   = factor(ifelse(jefe_edad > 49, 1, 0), labels = c("Si", "No")), # puede ser indicador de que la persona que sostiene el hogar tenga más o menos dinámica laboral
-        N_menores_f    = factor(ifelse(N_menores > 1.6, 1, 0), labels = c("Si", "No")), # número promedio hijas/os por mujer en Colombia (podrían ser más grandes pero por practicidad)
-        jefe_mujer_f   = factor(ifelse(jefe_mujer == "Jefe_mujer", 1, 0), labels = c("Si", "No")), 
-        prop_ocu_pet_f = factor(ifelse(prop_ocu_pet > 0.6, 1, 0), labels = c("Si", "No")), # hogares usualmente 3,3 personas, que trabaje al menos el 60 % (cuantil 3) 
-        Mayor_dependiente_f = factor(ifelse(N_mayor_dependiente >= 1, 1, 0), labels = c("Si", "No")),
-        jefe_cot_pens  = factor(ifelse(jefe_pension == "Jefe_af_pension", 1, 0), labels = c("Si", "No")),
-        jefe_cont_salud  = factor(ifelse(jefe_salud_sub == "Jefe_salud_contributivo", 1, 0), labels = c("Si", "No")), 
-        N_desocupados_f = factor(ifelse(N_desocupados >= 1, 1, 0), labels = c("Si", "No")),
-        )
-
-test = test %>% mutate(
-        hacinamiento_f = factor(ifelse(hacinamiento > 3, 1, 0), labels = c("Si", "No")), # porque es el a lo que se aproxima el 3 cuantil
-        jefe_mayor_f   = factor(ifelse(jefe_edad > 49, 1, 0), labels = c("Si", "No")), # puede ser indicador de que la persona que sostiene el hogar tenga más o menos dinámica laboral
-        N_menores_f    = factor(ifelse(N_menores > 1.6, 1, 0), labels = c("Si", "No")), # número promedio hijas/os por mujer en Colombia (podrían ser más grandes pero por practicidad)
-        jefe_mujer_f   = factor(ifelse(jefe_mujer == "Jefe_mujer", 1, 0), labels = c("Si", "No")), 
-        prop_ocu_pet_f = factor(ifelse(prop_ocu_pet > 0.6, 1, 0), labels = c("Si", "No")), # hogares usualmente 3,3 personas, que trabaje al menos el 60 % (cuantil 3) 
-        Mayor_dependiente_f = factor(ifelse(N_mayor_dependiente >= 1, 1, 0), labels = c("Si", "No")),
-        jefe_cot_pens  = factor(ifelse(jefe_pension == "Jefe_af_pension", 1, 0), labels = c("Si", "No")),
-        jefe_cont_salud  = factor(ifelse(jefe_salud_sub == "Jefe_salud_contributivo", 1, 0), labels = c("Si", "No")), 
-        N_desocupados_f = factor(ifelse(N_desocupados >= 1, 1, 0), labels = c("Si", "No"))
-) 
-
-sapply(train, class)
-
-table(train$jefe_salud_sub)
-table(test$jefe_salud_sub)
+#-----------------------------------------------------------------------------//
+# Modelo Boosting
+# Problem Set 3 G10 - BDML 202501
+# Fecha actualización: 23 de mayo de 2025
+#-----------------------------------------------------------------------------//
 
 
-X_2 = c("jefe_edad", 
-        "jefe_mujer",
-        "jefe_edad2",
-        "jefe_salud_sub", 
-        "N_personas",
-        "hacinamiento",
-        "max_nivel_educ", 
-        "Clase",
-        "viv_noPropia",
-        "prop_fuentes_ing", 
-        "prop_ina_pet",
-        "prop_ocu_pet",
-        "jefe_pension",
-        "prop_menores_pob",
-        "prop_mayores_pob",
-        "promedio_anios_educ",
-        "tipo_trabajo")
+# 1. IMPORTAR DATOS ------------------------------------------------------------
 
-#table(train$N_desocupados)
+# Cargar datos de entrenamiento y prueba
+train <- readRDS(file.path(stores_path, "train_data.rds"))
+test <- readRDS(file.path(stores_path, "test_data.rds"))
 
-#------------------------------------------------------------------------------#
-# 1. Modelos ----
-#------------------------------------------------------------------------------#
+# Separar variables predictoras y target
+vars_quitar <- c("price", "property_id")
+X_train <- train %>% select(-all_of(vars_quitar))
+Y_train <- train$price
+X_test <- test %>% select(-property_id)
 
-#-----------------------
-# 1.1. Bagging 
-#-----------------------
+# 2. COORDENADAS COMO OBJETO sf ------------------------------------------------
 
-bagged_tree = ranger::ranger(
-              formula(paste0("Pobre ~", paste0(X_2, collapse = " + "))),
-              data = train,
-              num.trees= 500, ## Numero de bootstrap samples y arboles a estimar. Default 500  
-              mtry = 8,
-              min.node.size  = 1, ## Numero minimo de observaciones en un nodo para intentar 
-              probability = TRUE  # clave para obtener probabilidades
-            ) 
-bagged_tree
+# Crear objeto sf con coordenadas geográficas
+coords_sf <- st_as_sf(train, coords = c("lon", "lat"), crs = 4326)
 
-table(train$Pobre)
-table(train$Pobre_d)
+# Calcular zona UTM según longitud media
+mean_lon <- mean(train$lon, na.rm = TRUE)
+utm_zone <- floor((mean_lon + 180) / 6) + 1
+utm_crs <- paste0("+proj=utm +zone=", utm_zone, " +datum=WGS84 +units=m +no_defs")
 
-# Calcular predicciones
+# Transformar coordenadas a UTM
+coords_utm_sf <- st_transform(coords_sf, crs = utm_crs)
+coords_utm_sf$price <- Y_train
 
-# Guardamos la predicción de cada árbol en forma de dataframe
-pred.bag_ranger <- as.data.frame( bagged_tree$predictions )
+# 3. ANALIZAR VARIOGRAMA -------------------------------------------------------
 
-# Visualizemoslo
-head(tibble(pred.bag_ranger))
+# Convertir a objeto Spatial para el variograma
+coords_utm_sp <- as_Spatial(coords_utm_sf)
 
+# Calcular variograma
+variog <- variogram(price ~ 1, data = coords_utm_sp)
+plot(variog)
 
-# Calcular las probabilidades (promedio de todas las predicciones de los árboles)
-phat.bag <- rowMeans(pred.bag_ranger[, 1, drop = FALSE]) # Probabilidades de ser "Pobre"
+# Estimar alcance del variograma (usaremos este valor para cellsize)
+theRange_value <- 1500  # Ajustado según tu variograma
 
+# 4. VALIDACIÓN CRUZADA ESPACIAL -----------------------------------------------
 
-# Calcular y guardar AUC de bagging
-aucval_bag = Metrics::auc(
-              actual = train$Pobre_d,
-              predicted = phat.bag)
-
-aucval_bag
-
-# Umbral de 0.5 para obtener las predicciones binarias
-yhat.bag <- ifelse(phat.bag >= 0.5, 1, 0)
-
-# Calcular el F1
-F1_Score(
-  y_pred = factor(yhat.bag, levels = c(1, 0)),
-  y_true = factor(train$Pobre_d, levels = c(1, 0)),
-  positive = "1"
+# Crear folds espaciales usando spatialsample
+spatial_cv <- spatial_block_cv(
+  coords_utm_sf,
+  v = 5,                   # 5 folds
+  cellsize = theRange_value # Usamos el rango del variograma
 )
 
+# Verificar folds
+print(spatial_cv)
 
-#------------------------------------------------------------------------------#
-# Resultados para Kaggle
-#------------------------------------------------------------------------------#
-
-# Calcular las probabilidades para test
-preds_test <- predict(bagged_tree, data = test)$predictions
-
-# Asumimos que preds_test tiene columnas: Pobre, No_pobre
-pred_pobre <- preds_test[, 1]
-
-# Convertir las probabilidades en etiquetas binarias (0 o 1)
-predictSample <- test %>%
-  mutate(pobre_lab = ifelse(pred_pobre >= 0.5, 1, 0)) %>%
-  select(id, pobre_lab) %>%
-  rename(pobre = pobre_lab) %>%
-  arrange(id)
-
-head(predictSample)
-
-# Guardar CSV
-name = paste0(
-  "Bagging_3",
-  ".csv"
-)
-
-write.csv(predictSample, file.path(stores_path, name), row.names = FALSE)
-
-
-
-#-----------------------
-# 1.2. Boosting 
-#-----------------------
-
-fiveStats <- function(...) {
-  c(
-    caret::twoClassSummary(...), # Returns ROC, Sensitivity, and Specificity
-    caret::defaultSummary(...)  # Returns RMSE and R-squared (for regression) or Accuracy and Kappa (for classification)
-  )
+# Visualizar bloques (requiere ggplot2)
+if(require(ggplot2)){
+  autoplot(spatial_cv)
 }
 
+# 5. EXTRAER ÍNDICES PARA CARET ------------------------------------------------
 
-ctrl<- trainControl(method = "cv",
-                    number = 5,
-                    summaryFunction = fiveStats,
-                    classProbs = TRUE, 
-                    verboseIter = TRUE,   # muestra el progreso
-                    savePredictions = TRUE)
+# Obtener índices de entrenamiento (forma correcta para spatialsample)
+index_caret <- map(spatial_cv$splits, ~ .x$in_id)  # in_id contiene los índices de entrenamiento
+names(index_caret) <- paste0("Fold", seq_along(index_caret))
 
-adagrid = expand.grid(
-          mfinal = c(50, 300 ,500),
-          maxdepth = c(2,3,5),
-          coeflearn = c('Breiman','Freund'))
+# Verificar distribución de datos por fold
+fold_counts <- map_dbl(index_caret, length)
+print(fold_counts)
 
 
-set.seed(91519) # important set seed. 
 
-adaboost_tree <- train(
-                       formula(paste0("Pobre ~", paste0(X_2, collapse = " + "))),
-                       data = train, 
-                       method = "AdaBoost.M1",  # para implementar el algoritmo antes descrito
-                       trControl = ctrl,
-                       metric = "ROC",
-                       tuneGrid = adagrid
+# 6. Validación cruzada espacial ----------------------------------------------
+spatial_blocks <- spatialBlock(
+  speciesData = as.data.frame(coords_utm@coords),  # usa coords en UTM (metros)
+  theRange = theRange_value,  
+  k = 5,
+  selection = "random",
+  iteration = 100,
+  showBlocks = TRUE,  # ahora sí para visualizar bloques
+  progress = FALSE
 )
 
-adaboost_tree
+# Crear índices para caret a partir de bloques espaciales
+index_caret <- spatial_blocks$folds %>% purrr::map(~.$train)
 
+# 7. Crear función de evaluación para regresión -------------------------------
+regressionStats <- function(data, lev = NULL, model = NULL) {
+  mae_val <- mae(data$obs, data$pred)
+  rmse_val <- rmse(data$obs, data$pred)
+  r2_val <- cor(data$obs, data$pred)^2
+  c(MAE = mae_val, RMSE = rmse_val, Rsquared = r2_val)
+}
 
-# Cálculo del AUC sobre el conjunto de entrenamiento ---------------------------
-
-# Obtener las probabilidades predichas para el conjunto de entrenamiento
-pred_probs_train <- predict(adaboost_tree, newdata = train, type = "prob")
-
-# Extraer la probabilidad de la clase "Pobre"
-prob_pobre_train <- pred_probs_train$Pobre
-
-# Cálculo del AUC utilizando la librería pROC
-roc_curve_train <- roc(train$Pobre, prob_pobre_train)
-
-# Mostrar AUC
-auc(roc_curve_train)
-
-
-# Cálculo del AUC sobre el conjunto de entrenamiento ---------------------------
-
-# Obtener las clases predichas para el conjunto de entrenamiento (con un umbral de 0.5)
-yhat_train <- ifelse(prob_pobre_train >= 0.5, 1, 0)
-
-# Calcular el F1 Score
-F1_Score_train <- F1_Score(
-  y_pred = factor(yhat_train, levels = c(1, 0)),
-  y_true = factor(train$Pobre_d, levels = c(1, 0)),
-  positive = "1"
+# 8. Control de entrenamiento -------------------------------------------------
+train_control_gbm <- trainControl(
+  method = "cv",
+  index = index_caret,
+  summaryFunction = regressionStats,
+  verboseIter = TRUE,
+  savePredictions = "final",
+  returnResamp = "all"
 )
 
-# Mostrar el F1 Score
-F1_Score_train
+# 8. Grid de hiperparámetros --------------------------------------------------
+gbm_grid <- expand.grid(
+  n.trees = c(100, 300, 500),
+  interaction.depth = c(1, 3, 5),
+  shrinkage = c(0.01, 0.05, 0.1),
+  n.minobsinnode = c(5, 10)
+)
+
+# 9. Entrenar modelo GBM ------------------------------------------------------
+set.seed(123)
+gbm_model <- train(
+  x = X_train,
+  y = Y_train,
+  method = "gbm",
+  trControl = train_control_gbm,
+  tuneGrid = gbm_grid,
+  metric = "MAE",
+  verbose = FALSE
+)
+
+# 10. Evaluar resultados en validación cruzada -------------------------------
+gbm_model$results %>%
+  arrange(MAE) %>%
+  head()
+
+# 11. Validación interna: predecir sobre train y calcular MAE -----------------
+pred_train <- predict(gbm_model, newdata = X_train)
+mae_train <- Metrics::mae(train$price, pred_train)
+cat("MAE en conjunto train: ", mae_train, "\n")
+
+# 12. Predecir sobre conjunto test --------------------------------------------
+pred_test <- predict(gbm_model, newdata = X_test)
+
+# 13. Guardar archivo para Kaggle ---------------------------------------------
+predicciones_kaggle <- data.frame(
+  property_id = property_ids_test,
+  pred_price = pred_test
+)
+
+write_csv(predicciones_kaggle, "kaggle_gbm_predictions.csv")
 
 
-#------------------------------------------------------------------------------#
-# Resultados para Kaggle
-#------------------------------------------------------------------------------#
 
-# Realizar predicciones sobre el conjunto de test (con probabilidades)
-pred_probs_test <- predict(adaboost_tree, newdata = test, type = "prob")
-
-# Ver las primeras predicciones
-head(pred_probs_test)
-
-# Crear una predicción binarizada (0 o 1) usando un umbral de 0.5
-pred_class_test <- ifelse(pred_probs_test$Pobre >= 0.5, 1, 0)
-
-# Crear un dataframe para Kaggle con las predicciones
-predictSample <- test %>%
-  mutate(pobre_pred = pred_class_test) %>%
-  select(id, pobre_pred) %>%
-  arrange(id)  # Si necesitas ordenar por 'id'
-
-# Ver las primeras filas del dataframe
-head(predictSample)
-
-# Extraer los parámetros óptimos
-best_params <- adaboost_tree$bestTune
-
-# Crear el nombre del archivo con los parámetros
-file_name <- paste0("Boosting_AdaBoost", 
-                    "mfinal", best_params$mfinal, 
-                    "_maxdepth", best_params$maxdepth, 
-                    "_coeflearn", best_params$coeflearn, 
-                    ".csv")
-
-# Guardar el archivo CSV
-write.csv(predictSample, file.path(stores_path, file_name), row.names = FALSE)

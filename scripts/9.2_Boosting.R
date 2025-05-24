@@ -1,0 +1,190 @@
+
+# 1. IMPORTAR DATOS ----------------------------------------------------------
+
+# Semilla para reproducibilidad
+set.seed(123)
+
+# Cargar datos
+train <- readRDS(file.path(stores_path, "train_data.rds"))
+test <- readRDS(file.path(stores_path, "test_data.rds"))
+
+# Verificar y convertir la variable price a numérico
+train$price <- as.numeric(as.character(train$price))
+if(any(is.na(train$price))) {
+  warning("NAs detectados en price. Filtrando...")
+  train <- train %>% filter(!is.na(price))
+}
+
+# Preparación de datos espaciales
+coords_sf <- st_as_sf(train, coords = c("lon", "lat"), crs = 4326)
+mean_lon <- mean(train$lon, na.rm = TRUE)
+utm_zone <- floor((mean_lon + 180) / 6) + 1
+utm_crs <- paste0("+proj=utm +zone=", utm_zone, " +datum=WGS84 +units=m +no_defs")
+coords_utm_sf <- st_transform(coords_sf, crs = utm_crs)
+
+# 2. VALIDACIÓN CRUZADA ESPACIAL OPTIMIZADA ------------------------------------
+
+# Análisis de variograma para determinar rango espacial
+variog <- variogram(price ~ 1, as_Spatial(coords_utm_sf))
+plot(variog, main = "Variograma Experimental")
+theRange_value <- 1200  # Ajustar según punto de estabilización
+
+# Crear folds espaciales con buffer
+spatial_folds <- spatial_block_cv(
+  coords_utm_sf,
+  v = 5,
+  cellsize = theRange_value,
+  buffer = theRange_value/2,
+  square = FALSE  # Bloques hexagonales para mejor cobertura
+)
+
+# Visualización interactiva de los folds
+if(require(plotly)){
+  ggplotly(
+    autoplot(spatial_folds) + 
+      geom_sf(data = coords_utm_sf, aes(color = price), alpha = 0.6) +
+      scale_color_viridis_c() +
+      ggtitle("Distribución de Precios y Folds Espaciales")
+  )
+}
+
+# Preparar índices para caret
+index_list <- map(spatial_folds$splits, ~ .x$in_id)
+
+# 3. MODELO GBM CON TRANSFORMACIÓN LOGARÍTMICA ---------------------------------
+
+# Configuración avanzada de entrenamiento
+train_control <- trainControl(
+  method = "cv",
+  index = index_list,
+  summaryFunction = function(data, lev = NULL, model = NULL) {
+    c(MAE = Metrics::mae(data$obs, data$pred),
+      MAE_log = Metrics::mae(log1p(data$obs), log1p(data$pred)),
+      RMSE = Metrics::rmse(data$obs, data$pred),
+      RMSLE = Metrics::rmse(log1p(data$obs), log1p(data$pred)))
+  },
+  verboseIter = TRUE,
+  savePredictions = "final",
+  allowParallel = TRUE
+)
+
+# Grid de parámetros optimizado
+gbm_grid <- expand.grid(
+  interaction.depth = c(5, 7, 9),
+  n.trees = c(500, 750, 1000),
+  shrinkage = c(0.01, 0.005),
+  n.minobsinnode = c(10, 15)
+)
+
+# Entrenamiento paralelizado
+cl <- makePSOCKcluster(detectCores() - 1)
+registerDoParallel(cl)
+
+# Modelo final con transformación logarítmica y distribución Laplace
+gbm_model <- train(
+  x = train %>% select(-c(property_id, price, lon, lat)),
+  y = log1p(train$price),
+  method = "gbm",
+  distribution = "laplace",
+  trControl = train_control,
+  tuneGrid = gbm_grid,
+  metric = "MAE",
+  verbose = TRUE,
+  bag.fraction = 0.8
+)
+
+stopCluster(cl)
+
+# 4. EVALUACIÓN Y DIAGNÓSTICO DEL MODELO --------------------------------------
+
+# Resultados de validación cruzada
+cv_results <- gbm_model$resample %>% 
+  group_by(Resample) %>% 
+  summarise(MAE = mean(MAE), RMSLE = mean(RMSLE))
+
+# Gráfico de evolución del error
+ggplot(gbm_model) + 
+  geom_line(aes(y = MAE, color = as.factor(interaction.depth))) +
+  facet_wrap(~ shrinkage, scales = "free_y") +
+  labs(title = "Evolución del MAE por Hiperparámetros",
+       color = "Profundidad") +
+  theme_bw()
+
+# Importancia de variables mejorada
+var_imp <- varImp(gbm_model, scale = TRUE)
+ggplot(var_imp, top = 15) + 
+  ggtitle("Importancia de Variables (Escalada)") +
+  theme(axis.text.y = element_text(size = 8))
+
+# Diagnóstico espacial de residuales
+train$pred <- expm1(predict(gbm_model, newdata = train))
+train$residuals <- train$price - train$pred
+
+ggplot(train) +
+  geom_sf(aes(color = residuals), size = 1.2) +
+  scale_color_gradient2(low = "blue", mid = "white", high = "red", 
+                        midpoint = 0, limits = c(-quantile(abs(train$residuals), 0.99), 
+                                                 quantile(abs(train$residuals), 0.99))) +
+  ggtitle("Mapa de Residuales (Escala Recortada al 99%)") +
+  theme_minimal()
+
+
+
+# 5. GENERACIÓN DE PREDICCIONES PARA KAGGLE ----------------------------------
+
+# Obtener los mejores hiperparámetros del modelo
+best_params <- gbm_model$bestTune
+
+# Crear nombre descriptivo del archivo con hiperparámetros (formato solicitado)
+best_params_str <- paste0(
+  "gbm_trees", best_params$n.trees,
+  "_depth", best_params$interaction.depth,
+  "_shrink", best_params$shrinkage,
+  "_minobs", best_params$n.minobsinnode
+)
+
+# Función para predecir y ajustar valores atípicos
+predict_final_prices <- function(model, newdata) {
+  # Predecir en escala logarítmica y convertir
+  pred <- expm1(predict(model, newdata = newdata))
+  
+  # Ajustar outliers basado en los percentiles de entrenamiento
+  q_low <- quantile(train$price, 0.01)
+  q_high <- quantile(train$price, 0.99)
+  pred <- pmin(pmax(pred, q_low), q_high)
+  
+  # Redondear a números enteros sin decimales
+  return(round(pred, 0))
+}
+
+# Generar predicciones finales
+test_pred <- predict_final_prices(gbm_model, test)
+
+# Preparar datos de submission
+submission <- data.frame(
+  property_id = test$property_id,
+  price = test_pred
+)
+
+# Generar nombre del archivo exactamente como se solicita
+file_name <- paste0(
+  "Boosting_GB_",
+  best_params_str,
+  ".csv"
+)
+
+# Guardar el archivo CSV
+write.csv(submission, file.path(submission_path, file_name), row.names = FALSE)
+
+# Verificación final del archivo generado
+cat("\n=== Archivo de Submission Generado ===\n")
+cat("Nombre del archivo:", file_name, "\n")
+cat("Ruta completa:", file.path(submission_path, file_name), "\n")
+cat("Número de predicciones:", nrow(submission), "\n")
+cat("Rango de precios predichos:\n")
+print(summary(submission$price))
+
+# Mostrar primeras líneas del archivo
+cat("\nPrimeras 5 predicciones:\n")
+print(head(submission, 5))
+

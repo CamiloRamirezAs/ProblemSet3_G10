@@ -76,7 +76,13 @@ p_load(rvest,
                xtable,
        sf,
        blockCV,
-       gbm)
+       gbm,
+       gstat,
+       sp,
+       rgdal,
+       sperrorest,
+       purr,
+       doParallel)
 
 #library("xtable")
 
