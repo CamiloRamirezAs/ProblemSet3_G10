@@ -5,7 +5,7 @@
 #-----------------------------------------------------------------------------//
 
 train_data =  readRDS(file.path(stores_path, "train_data.rds"))
-train_spatial =  readRDS(file.path(stores_path, "train_spatial.rds"))
+train_spatial =  readRDS(file.path(stores_path, "spatial_train.rds"))
 train = merge(train_data, train_spatial, by = c("property_id"), all = T)
 train = as.data.frame(train) 
 
