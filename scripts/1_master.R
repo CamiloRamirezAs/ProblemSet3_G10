@@ -82,7 +82,10 @@ p_load(rvest,
        rgdal,
        sperrorest,
        purr,
-       doParallel)
+       doParallel,
+       Metrics,
+       spatialCV,
+       spatialEco)
 
 #library("xtable")
 
