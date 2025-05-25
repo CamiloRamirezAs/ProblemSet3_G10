@@ -225,14 +225,48 @@ assign("SL.ranger.robust", SL.ranger.robust, envir = .GlobalEnv)
 
 # Predicciones sobre test
 
+predict_manual <- function(model, newdata) {
+  # Obtener predicciones individuales
+  preds <- list()
+  
+  for (algo in model$libraryNames) {
+    model_obj <- model$fitLibrary[[algo]]$object
+    
+    # Manejar diferentes tipos de modelos
+    if (is.numeric(model_obj) || is.character(model_obj)) {
+      # Para SL.mean (devuelve la media) o modelos fallback
+      preds[[algo]] <- rep(model_obj, nrow(newdata))
+    } else if (inherits(model_obj, "xgb.Booster")) {
+      # Para XGBoost
+      dtest <- xgb.DMatrix(data = as.matrix(newdata))
+      preds[[algo]] <- predict(model_obj, dtest)
+    } else if (inherits(model_obj, "ranger")) {
+      # Para Random Forest
+      preds[[algo]] <- predict(model_obj, data = as.data.frame(newdata))$predictions
+    } else if (inherits(model_obj, "glm")) {
+      # Para GLM
+      preds[[algo]] <- predict(model_obj, newdata = as.data.frame(newdata), type = "response")
+    } else {
+      # Para otros casos
+      preds[[algo]] <- rep(NA, nrow(newdata))
+      warning("No se pudo predecir para el algoritmo: ", algo)
+    }
+  }
+  
+  # Combinar según los coeficientes
+  pred_matrix <- do.call(cbind, preds)
+  final_pred <- pred_matrix %*% model$coef
+  
+  return(final_pred)
+}
 
-pred_test <- predict(fit_SL, newdata = X_test_df, onlySL = TRUE)$pred
-str(pred_test)
+# Hacer la predicción
+pred_test <- predict_manual(fit_SL, X_test_df)
 
 # Crear submission para Kaggle con price redondeado a 0 decimales
 submission <- data.frame(
   property_id = property_ids_test,
-  price = round(pred_SL_test, 0)
+  price = round(pred_test, 0)
 )
 
 # Guardar submission con nombre detallado
