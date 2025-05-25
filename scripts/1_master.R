@@ -32,8 +32,40 @@ if (!require(pacman)) install.packages("pacman", dependencies = TRUE)
 pacman::p_load(dplyr, readr, zip)
 library(pacman)
 
-
 # Cargar paquetes necesarios
+p_load(tidyverse, 
+       rvest,
+       dplyr,
+       stargazer, 
+       foreign, 
+       skimr, # summary data
+       visdat,
+       sf, 
+       stringi, 
+       tm, 
+       leaflet,
+       osmdata, 
+       nnet, 
+       recipes, 
+       parsnip, 
+       rio, ## read datasets
+       tidymodels, #modelos de ML, colección de 8  librerías
+       yardstick, 
+       keras, 
+       Matrix, 
+       rpart, 
+       rpart.plot, 
+       caret, 
+       spatialsample, 
+       purrr
+)
+
+# install.packages("keras")
+# library(reticulate)
+# reticulate::virtualenv_create("r-reticulate", python = install_python())
+# library(keras)
+# install_keras(envname = "r-reticulate")
+
 p_load(rvest,
               dplyr,
               stargazer, 
