@@ -1,280 +1,301 @@
-#------------------------------------------------------------------------------#
-# Modelos: bagging y boosting ----
-#------------------------------------------------------------------------------#
-
-train = readRDS(file.path(stores_path, "upsampled_train_data.rds"))
-#train = readRDS(file.path(stores_path, "train_data.rds"))
-test  = readRDS(file.path(stores_path, "test_data.rds"))
-
-intersect(colnames(train), colnames(test))
-
-#---------------------------
-# Ajuste de variables y cols
-#---------------------------
-
-train = train[, !duplicated(colnames(train))]
-train = train %>% dplyr::mutate(Pobre_d = ifelse(Pobre == "Pobre", 1, 0))
-
-#Pobre_num = ifelse(train$Pobre_d == "Si", 1, 0)
-
-#---------------------------
-# Ajuste de variables factor
-#---------------------------
-X_1 = c("hacinamiento", 
-        "Clase",
-        "jefe_mujer", 
-        "prop_ocu_pet", 
-        "jefe_edad",
-        "jefe_nivel_educ",
-        "N_mayor_dependiente", 
-        "prop_ina_pet",
-        "jefe_pension", 
-        "N_menores")
-
-summary(train$hacinamiento)
-summary(train$jefe_edad)
-summary(train$N_menores)
-table(train$jefe_mujer)
-summary(train$prop_ocu_pet)
-summary(train$N_mayor_dependiente)
-table(train$jefe_nivel_educ)
-table(train$jefe_pension)
-table(train$jefe_salud_sub)
-table(train$Pobre)
-
-train = train %>% mutate(
-        Pobre_d = ifelse(Pobre == "Pobre", 1, 0),
-        hacinamiento_f = factor(ifelse(hacinamiento > 3, 1, 0), labels = c("Si", "No")), # porque es el a lo que se aproxima el 3 cuantil
-        jefe_mayor_f   = factor(ifelse(jefe_edad > 49, 1, 0), labels = c("Si", "No")), # puede ser indicador de que la persona que sostiene el hogar tenga más o menos dinámica laboral
-        N_menores_f    = factor(ifelse(N_menores > 1.6, 1, 0), labels = c("Si", "No")), # número promedio hijas/os por mujer en Colombia (podrían ser más grandes pero por practicidad)
-        jefe_mujer_f   = factor(ifelse(jefe_mujer == "Jefe_mujer", 1, 0), labels = c("Si", "No")), 
-        prop_ocu_pet_f = factor(ifelse(prop_ocu_pet > 0.6, 1, 0), labels = c("Si", "No")), # hogares usualmente 3,3 personas, que trabaje al menos el 60 % (cuantil 3) 
-        Mayor_dependiente_f = factor(ifelse(N_mayor_dependiente >= 1, 1, 0), labels = c("Si", "No")),
-        jefe_cot_pens  = factor(ifelse(jefe_pension == "Jefe_af_pension", 1, 0), labels = c("Si", "No")),
-        jefe_cont_salud  = factor(ifelse(jefe_salud_sub == "Jefe_salud_contributivo", 1, 0), labels = c("Si", "No")), 
-        N_desocupados_f = factor(ifelse(N_desocupados >= 1, 1, 0), labels = c("Si", "No")),
-        )
-
-test = test %>% mutate(
-        hacinamiento_f = factor(ifelse(hacinamiento > 3, 1, 0), labels = c("Si", "No")), # porque es el a lo que se aproxima el 3 cuantil
-        jefe_mayor_f   = factor(ifelse(jefe_edad > 49, 1, 0), labels = c("Si", "No")), # puede ser indicador de que la persona que sostiene el hogar tenga más o menos dinámica laboral
-        N_menores_f    = factor(ifelse(N_menores > 1.6, 1, 0), labels = c("Si", "No")), # número promedio hijas/os por mujer en Colombia (podrían ser más grandes pero por practicidad)
-        jefe_mujer_f   = factor(ifelse(jefe_mujer == "Jefe_mujer", 1, 0), labels = c("Si", "No")), 
-        prop_ocu_pet_f = factor(ifelse(prop_ocu_pet > 0.6, 1, 0), labels = c("Si", "No")), # hogares usualmente 3,3 personas, que trabaje al menos el 60 % (cuantil 3) 
-        Mayor_dependiente_f = factor(ifelse(N_mayor_dependiente >= 1, 1, 0), labels = c("Si", "No")),
-        jefe_cot_pens  = factor(ifelse(jefe_pension == "Jefe_af_pension", 1, 0), labels = c("Si", "No")),
-        jefe_cont_salud  = factor(ifelse(jefe_salud_sub == "Jefe_salud_contributivo", 1, 0), labels = c("Si", "No")), 
-        N_desocupados_f = factor(ifelse(N_desocupados >= 1, 1, 0), labels = c("Si", "No"))
-) 
-
-sapply(train, class)
-
-table(train$jefe_salud_sub)
-table(test$jefe_salud_sub)
-
-
-X_2 = c("jefe_edad", 
-        "jefe_mujer",
-        "jefe_edad2",
-        "jefe_salud_sub", 
-        "N_personas",
-        "hacinamiento",
-        "max_nivel_educ", 
-        "Clase",
-        "viv_noPropia",
-        "prop_fuentes_ing", 
-        "prop_ina_pet",
-        "prop_ocu_pet",
-        "jefe_pension",
-        "prop_menores_pob",
-        "prop_mayores_pob",
-        "promedio_anios_educ",
-        "tipo_trabajo")
-
-#table(train$N_desocupados)
-
-#------------------------------------------------------------------------------#
-# 1. Modelos ----
-#------------------------------------------------------------------------------#
-
-#-----------------------
-# 1.1. Bagging 
-#-----------------------
-
-bagged_tree = ranger::ranger(
-              formula(paste0("Pobre ~", paste0(X_2, collapse = " + "))),
-              data = train,
-              num.trees= 500, ## Numero de bootstrap samples y arboles a estimar. Default 500  
-              mtry = 8,
-              min.node.size  = 1, ## Numero minimo de observaciones en un nodo para intentar 
-              probability = TRUE  # clave para obtener probabilidades
-            ) 
-bagged_tree
-
-table(train$Pobre)
-table(train$Pobre_d)
-
-# Calcular predicciones
-
-# Guardamos la predicción de cada árbol en forma de dataframe
-pred.bag_ranger <- as.data.frame( bagged_tree$predictions )
-
-# Visualizemoslo
-head(tibble(pred.bag_ranger))
-
-
-# Calcular las probabilidades (promedio de todas las predicciones de los árboles)
-phat.bag <- rowMeans(pred.bag_ranger[, 1, drop = FALSE]) # Probabilidades de ser "Pobre"
-
-
-# Calcular y guardar AUC de bagging
-aucval_bag = Metrics::auc(
-              actual = train$Pobre_d,
-              predicted = phat.bag)
-
-aucval_bag
-
-# Umbral de 0.5 para obtener las predicciones binarias
-yhat.bag <- ifelse(phat.bag >= 0.5, 1, 0)
-
-# Calcular el F1
-F1_Score(
-  y_pred = factor(yhat.bag, levels = c(1, 0)),
-  y_true = factor(train$Pobre_d, levels = c(1, 0)),
-  positive = "1"
-)
-
-
-#------------------------------------------------------------------------------#
-# Resultados para Kaggle
-#------------------------------------------------------------------------------#
-
-# Calcular las probabilidades para test
-preds_test <- predict(bagged_tree, data = test)$predictions
-
-# Asumimos que preds_test tiene columnas: Pobre, No_pobre
-pred_pobre <- preds_test[, 1]
-
-# Convertir las probabilidades en etiquetas binarias (0 o 1)
-predictSample <- test %>%
-  mutate(pobre_lab = ifelse(pred_pobre >= 0.5, 1, 0)) %>%
-  select(id, pobre_lab) %>%
-  rename(pobre = pobre_lab) %>%
-  arrange(id)
-
-head(predictSample)
-
-# Guardar CSV
-name = paste0(
-  "Bagging_3",
-  ".csv"
-)
-
-write.csv(predictSample, file.path(stores_path, name), row.names = FALSE)
 
 
 
-#-----------------------
-# 1.2. Boosting 
-#-----------------------
 
-fiveStats <- function(...) {
-  c(
-    caret::twoClassSummary(...), # Returns ROC, Sensitivity, and Specificity
-    caret::defaultSummary(...)  # Returns RMSE and R-squared (for regression) or Accuracy and Kappa (for classification)
-  )
+# 1. IMPORTAR DATOS ----------------------------------------------------------
+# (Esta sección permanece igual que en tu código original)
+set.seed(123)
+train_A <- readRDS(file.path(stores_path, "train_data.rds"))
+test_A  <- readRDS(file.path(stores_path, "test_data.rds"))
+train_A <- as.data.frame(train_A)
+test_A <- as.data.frame(test_A)
+train_A <- train_A %>% dplyr::select(-geometry)
+
+train_B <- readRDS(file.path(stores_path, "spatial_train.rds"))
+test_B  <- readRDS(file.path(stores_path, "spatial_test.rds"))
+
+train <- train_A %>% left_join(train_B, by = "property_id")
+test <- test_A %>% left_join(test_B, by = "property_id")
+
+vars_model <- c("property_id", "price", "surface_total", "bedrooms", "bathrooms", "type_housing",
+                "piscina", "garaje", "seguridad", "balcon", "gym", "year",
+                "dist_parque", "AVALUO_COM", "dist_centComercial", "dist_cai",
+                "dist_transmi", "num_paraderos_sitp", "num_colegios", "ESTRATO", 
+                "num_restaurantes", "lon", "lat")
+
+test_vars_model <- setdiff(vars_model, "price")
+train <- train %>% select(all_of(vars_model))
+test  <- test  %>% select(all_of(test_vars_model))
+
+train <- train %>%
+  mutate(
+    type_housing = factor(type_housing, levels = c("Casa", "Apartamento")),
+    apto_casa = as.integer(type_housing == "Apartamento")
+  ) %>%
+  select(-type_housing)
+
+test <- test %>%
+  mutate(
+    type_housing = factor(type_housing, levels = c("Casa", "Apartamento")),
+    apto_casa = as.integer(type_housing == "Apartamento")
+  ) %>%
+  select(-type_housing)
+
+train$price <- as.numeric(as.character(train$price))
+if(any(is.na(train$price))) {
+  warning("NAs detectados en price. Filtrando...")
+  train <- train %>% filter(!is.na(price))
 }
 
+# 2. VALIDACIÓN CRUZADA ESPACIAL --------------------------------------------
+# (Esta sección permanece igual)
+coords_sf <- st_as_sf(train, coords = c("lon", "lat"), crs = 4326)
+mean_lon <- mean(train$lon, na.rm = TRUE)
+utm_zone <- floor((mean_lon + 180) / 6) + 1
+utm_crs <- paste0("+proj=utm +zone=", utm_zone, " +datum=WGS84 +units=m +no_defs")
+coords_utm_sf <- st_transform(coords_sf, crs = utm_crs)
 
-ctrl<- trainControl(method = "cv",
-                    number = 5,
-                    summaryFunction = fiveStats,
-                    classProbs = TRUE, 
-                    verboseIter = TRUE,   # muestra el progreso
-                    savePredictions = TRUE)
+variog <- variogram(price ~ 1, as_Spatial(coords_utm_sf))
+plot(variog, main = "Variograma Experimental")
+theRange_value <- 1200
 
-adagrid = expand.grid(
-          mfinal = c(50, 300 ,500),
-          maxdepth = c(2,3,5),
-          coeflearn = c('Breiman','Freund'))
-
-
-set.seed(91519) # important set seed. 
-
-adaboost_tree <- train(
-                       formula(paste0("Pobre ~", paste0(X_2, collapse = " + "))),
-                       data = train, 
-                       method = "AdaBoost.M1",  # para implementar el algoritmo antes descrito
-                       trControl = ctrl,
-                       metric = "ROC",
-                       tuneGrid = adagrid
+spatial_folds <- spatial_block_cv(
+  coords_utm_sf,
+  v = 5,
+  cellsize = theRange_value,
+  buffer = theRange_value/2,
+  square = FALSE # Bloques hexagonales para mejor cobertura
 )
 
-adaboost_tree
+print(spatial_folds)
+autoplot(spatial_folds)
 
+# Preparar índices para caret
+index_list <- map(spatial_folds$splits, ~ .x$in_id)
 
-# Cálculo del AUC sobre el conjunto de entrenamiento ---------------------------
+# 3. MODELO GBM SIN TRANSFORMACIÓN LOGARÍTMICA ------------------------------
 
-# Obtener las probabilidades predichas para el conjunto de entrenamiento
-pred_probs_train <- predict(adaboost_tree, newdata = train, type = "prob")
-
-# Extraer la probabilidad de la clase "Pobre"
-prob_pobre_train <- pred_probs_train$Pobre
-
-# Cálculo del AUC utilizando la librería pROC
-roc_curve_train <- roc(train$Pobre, prob_pobre_train)
-
-# Mostrar AUC
-auc(roc_curve_train)
-
-
-# Cálculo del AUC sobre el conjunto de entrenamiento ---------------------------
-
-# Obtener las clases predichas para el conjunto de entrenamiento (con un umbral de 0.5)
-yhat_train <- ifelse(prob_pobre_train >= 0.5, 1, 0)
-
-# Calcular el F1 Score
-F1_Score_train <- F1_Score(
-  y_pred = factor(yhat_train, levels = c(1, 0)),
-  y_true = factor(train$Pobre_d, levels = c(1, 0)),
-  positive = "1"
+# Configuración de entrenamiento MODIFICADA
+train_control <- trainControl(
+  method = "cv",
+  index = index_list,
+  summaryFunction = function(data, lev = NULL, model = NULL) {
+    c(MAE = mean(abs(data$obs - data$pred)),
+      RMSE = sqrt(mean((data$obs - data$pred)^2)),
+      MAPE = mean(abs((data$obs - data$pred)/data$obs), na.rm = TRUE)*100)
+  },
+  verboseIter = TRUE,
+  savePredictions = "final",
+  allowParallel = TRUE
 )
 
-# Mostrar el F1 Score
-F1_Score_train
+# Grid de parámetros (puedes ajustarlo)
+gbm_grid <- expand.grid(
+  interaction.depth = c(5, 7, 9),
+  n.trees = c(500, 750, 1000),
+  shrinkage = c(0.01, 0.005),
+  n.minobsinnode = c(10, 15)
+)
+
+# Entrenamiento paralelizado
+cl <- makePSOCKcluster(detectCores() - 1)
+registerDoParallel(cl)
+
+# Modelo final SIN transformación logarítmica
+gbm_model <- train(
+  x = train %>% select(-c(property_id, price, lon, lat)),
+  y = train$price,  # Usamos price directamente
+  method = "gbm",
+  distribution = "laplace",  # Mantenemos Laplace para robustez
+  trControl = train_control,
+  tuneGrid = gbm_grid,
+  metric = "MAE",  # Optimizamos por MAE
+  verbose = TRUE,
+  bag.fraction = 0.8
+)
+
+stopCluster(cl)
+
+# 4. EVALUACIÓN Y DIAGNÓSTICO ----------------------------------------------
+
+# Resultados de validación cruzada
+cv_results <- gbm_model$resample %>% 
+  group_by(Resample) %>% 
+  summarise(MAE = mean(MAE), RMSE = mean(RMSE), MAPE = mean(MAPE))
+
+print(cv_results)
+
+# Gráficos de diagnóstico
+ggplot(gbm_model) + 
+  geom_line(aes(y = MAE, color = as.factor(interaction.depth))) +
+  facet_wrap(~ shrinkage, scales = "free_y") +
+  labs(title = "Evolución del MAE por Hiperparámetros",
+       color = "Profundidad") +
+  theme_bw()
+
+# Residuales directos (sin transformación)
+train$pred <- predict(gbm_model, newdata = train)
+train$residuals <- train$price - train$pred
+
+# Gráfico de residuales vs valores reales
+ggplot(train, aes(x = price, y = residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  geom_smooth(method = "loess", color = "blue") +
+  labs(title = "Residuales vs Valores Reales",
+       x = "Precio Real", y = "Residual") +
+  theme_minimal()
+
+# Mapa espacial de residuales
+train_sf <- st_as_sf(train, coords = c("lon", "lat"), crs = 4326)
+residual_limit <- quantile(abs(train$residuals), 0.99)
+
+ggplot(train_sf) +
+  geom_sf(aes(color = residuals), size = 1.2) +
+  scale_color_gradient2(low = "blue", mid = "white", high = "red",
+                        midpoint = 0, 
+                        limits = c(-residual_limit, residual_limit)) +
+  ggtitle("Distribución Espacial de Residuales") +
+  theme_minimal()
+
+# 5. GENERACIÓN DE PREDICCIONES PARA KAGGLE --------------------------------
+
+# Obtener mejores parámetros
+best_params <- gbm_model$bestTune
+
+# Función de predicción ajustada
+predict_final_prices <- function(model, newdata) {
+  pred <- predict(model, newdata = newdata)
+  # Ajustar outliers conservadoramente
+  q_low <- quantile(train$price, 0.01)
+  q_high <- quantile(train$price, 0.99)
+  pred <- pmin(pmax(pred, q_low), q_high)
+  return(round(pred, 0))
+}
+
+# Generar predicciones
+test_pred <- predict_final_prices(gbm_model, test)
+
+# Preparar submission
+submission <- data.frame(
+  property_id = test$property_id,
+  price = test_pred
+)
+
+# Crear nombre descriptivo del archivo con hiperparámetros (formato solicitado)
+best_params_str <- paste0(
+  "gbm_trees", best_params$n.trees,
+  "_depth", best_params$interaction.depth,
+  "_shrink", best_params$shrinkage,
+  "_minobs", best_params$n.minobsinnode
+)
 
 
-#------------------------------------------------------------------------------#
-# Resultados para Kaggle
-#------------------------------------------------------------------------------#
-
-# Realizar predicciones sobre el conjunto de test (con probabilidades)
-pred_probs_test <- predict(adaboost_tree, newdata = test, type = "prob")
-
-# Ver las primeras predicciones
-head(pred_probs_test)
-
-# Crear una predicción binarizada (0 o 1) usando un umbral de 0.5
-pred_class_test <- ifelse(pred_probs_test$Pobre >= 0.5, 1, 0)
-
-# Crear un dataframe para Kaggle con las predicciones
-predictSample <- test %>%
-  mutate(pobre_pred = pred_class_test) %>%
-  select(id, pobre_pred) %>%
-  arrange(id)  # Si necesitas ordenar por 'id'
-
-# Ver las primeras filas del dataframe
-head(predictSample)
-
-# Extraer los parámetros óptimos
-best_params <- adaboost_tree$bestTune
-
-# Crear el nombre del archivo con los parámetros
-file_name <- paste0("Boosting_AdaBoost", 
-                    "mfinal", best_params$mfinal, 
-                    "_maxdepth", best_params$maxdepth, 
-                    "_coeflearn", best_params$coeflearn, 
+# Guardar archivo
+file_name <- paste0("Boosting_GB_price_",
+                    best_params_str,
                     ".csv")
 
-# Guardar el archivo CSV
-write.csv(predictSample, file.path(stores_path, file_name), row.names = FALSE)
+write.csv(submission, file.path(submission_path, file_name), row.names = FALSE)
+
+# Verificación final del archivo generado
+cat("\n=== Archivo de Submission Generado ===\n")
+cat("Nombre del archivo:", file_name, "\n")
+cat("Ruta completa:", file.path(submission_path, file_name), "\n")
+cat("Número de predicciones:", nrow(submission), "\n")
+cat("Rango de precios predichos:\n")
+print(summary(submission$price))
+
+# Mostrar primeras líneas del archivo
+cat("\nPrimeras 5 predicciones:\n")
+print(head(submission, 5))
+
+
+
+# 6 VALIDACIÓN CON DATOS DE TRAIN -----------------------------------------
+
+# Calcular métricas de evaluación en escala original
+mae_train <- mean(abs(train$price - train$pred))
+rmse_train <- sqrt(mean((train$price - train$pred)^2))
+mape_train <- mean(abs((train$price - train$pred)/train$price), na.rm = TRUE) * 100
+
+# Resultados detallados
+cat("\n=== MÉTRICAS DE VALIDACIÓN EN TRAIN ===\n")
+cat(sprintf("MAE: %.2f\n", mae_train))
+cat(sprintf("RMSE: %.2f\n", rmse_train))
+cat(sprintf("MAPE: %.2f%%\n", mape_train))
+
+# Análisis de residuales
+residual_stats <- summary(train$residuals)
+cat("\n=== ESTADÍSTICAS DE RESIDUALES ===\n")
+print(residual_stats)
+
+# Gráfico de densidad de residuales mejorado
+ggplot(train, aes(x = residuals)) +
+  geom_histogram(aes(y = ..density..), bins = 50, fill = "steelblue", alpha = 0.6) +
+  geom_density(color = "red", linewidth = 1) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "darkgreen") +
+  labs(title = "Distribución de Residuales en Train",
+       subtitle = paste("MAE:", round(mae_train, 2), "| MAPE:", round(mape_train, 2), "%"),
+       x = "Residuales (Precio Real - Predicción)", 
+       y = "Densidad") +
+  theme_minimal()
+
+# Análisis por percentiles de precio
+# Primero creamos la variable price_percentile
+train <- train %>%
+  mutate(price_percentile = cut(price, 
+                                breaks = quantile(price, probs = seq(0, 1, 0.1)),
+                                include.lowest = TRUE))
+
+# Luego calculamos las métricas por percentil
+error_by_percentile <- train %>%
+  group_by(price_percentile) %>%
+  summarise(
+    n = n(),
+    mean_price = mean(price),
+    mean_pred = mean(pred),
+    mae = mean(abs(residuals)),
+    mape = mean(abs(residuals/price), na.rm = TRUE)*100,
+    .groups = 'drop'
+  )
+
+# Gráfico de error por percentiles
+percentile_plot <- ggplot(error_by_percentile, aes(x = price_percentile, y = mape)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = sprintf("%.1f%%", mape)), vjust = -0.5, size = 3) +
+  labs(title = "Error Porcentual Absoluto Medio por Percentil de Precio",
+       x = "Percentil de Precio", 
+       y = "MAPE (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(percentile_plot)
+
+# Gráfico Q-Q de residuales
+qq_plot <- ggplot(train, aes(sample = residuals)) +
+  stat_qq() + 
+  stat_qq_line(color = "red") +
+  labs(title = "Gráfico Q-Q de Residuales",
+       subtitle = "Evaluación de normalidad") +
+  theme_minimal()
+
+print(qq_plot)
+
+# Mapa de residuales mejorado
+residual_breaks <- quantile(train$residuals, probs = seq(0, 1, 0.1))
+train_sf <- st_as_sf(train, coords = c("lon", "lat"), crs = 4326)
+
+residual_map <- ggplot(train_sf) +
+  geom_sf(aes(color = residuals), size = 1, alpha = 0.7) +
+  scale_color_gradient2(low = "blue", mid = "white", high = "red",
+                        midpoint = 0,
+                        breaks = residual_breaks,
+                        labels = scales::comma) +
+  labs(title = "Distribución Espacial de Residuales",
+       subtitle = paste("MAE:", round(mae_train, 2), "| MAPE:", round(mape_train, 2), "%"),
+       color = "Residuales") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(residual_map)
