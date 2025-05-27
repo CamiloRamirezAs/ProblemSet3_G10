@@ -183,7 +183,7 @@ num_trees_val <- 1000
 
 # Guardar archivo con los hiperparámetros en el nombre
 file_name <- paste0(
-  "RandomForest_CV_revisar_trees_", num_trees_val,
+  "RandomForest_CV_trees", num_trees_val,
   "_mtry", rf_tuned$bestTune$mtry,
   "_nodesize", rf_tuned$bestTune$min.node.size,
   ".csv"
