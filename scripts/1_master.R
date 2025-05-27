@@ -88,7 +88,8 @@ p_load(tidyverse,
        sf,
        blockCV,
        gbm, 
-       cowplot)
+       cowplot, 
+       tableone)
 
 
 # install.packages("keras")
