@@ -1,5 +1,9 @@
-
-
+#-----------------------------------------------------------------------------//
+# Modelo SupeLearner con validación cruzada espacial: 
+# XGBoost, Random Forest, media y regresión lineal
+# Problem Set 3 G10 - BDML 202501
+# Fecha actualización: 23 de mayo de 2025
+#-----------------------------------------------------------------------------//
 
 
 

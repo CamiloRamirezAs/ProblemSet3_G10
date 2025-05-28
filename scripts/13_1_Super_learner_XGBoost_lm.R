@@ -1,5 +1,6 @@
 #-----------------------------------------------------------------------------//
-# Modelo Super learner: XGBoost & lineal regression
+# Modelo SupeLearner con validación cruzada espacial: 
+# XGBoost regresión lineal
 # Problem Set 3 G10 - BDML 202501
 # Fecha actualización: 23 de mayo de 2025
 #-----------------------------------------------------------------------------//

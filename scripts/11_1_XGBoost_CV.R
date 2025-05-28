@@ -1,6 +1,8 @@
-
-
-
+#-----------------------------------------------------------------------------//
+# Modelo XGBoost sin validación cruzada espacial
+# Problem Set 3 G10 - BDML 202501
+# Fecha actualización: 23 de mayo de 2025
+#-----------------------------------------------------------------------------//
 
 
 # 1. IMPORTAR DATOS ------------------------------------------------------------
@@ -160,7 +162,10 @@ submission_name <- paste0(
   paste(top_vars[1:3], collapse = "_"), "_",  # 3 variables más importantes
   "nrounds", best_params$nrounds, "_",
   "depth", best_params$max_depth, "_",
-  "eta", gsub("\\.", "", as.character(best_params$eta)), ".csv"
+  "eta", gsub("\\.", "", as.character(best_params$eta)), 
+  "gamma", gsub("\\.", "", as.character(best_params$gamma)), "_",
+  "minchild", best_params$min_child_weight, "_",
+  "colsample", gsub("\\.", "", as.character(best_params$colsample_bytree)),".csv"
 )
 
 write_csv(submission, file.path(submission_path, submission_name))
