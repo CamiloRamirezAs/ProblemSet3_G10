@@ -1,2 +1,7 @@
-# ProblemSet3_G10
-Problem Set3 Big - Data y machine learning
+# Repositorio Problem Set 3 - Group 10 - Big Data y Machine Learning
+
+- `document`: contiene nuestro documento final en formato `pdf`, así como las carpetas de documento en latex 
+- `scripts`: contiene los scripts ejecutados para el taller. El script "1_master" contiene las rutas de todas las carpetas del respositorio y los paquetes usados en la ejecución del código. Es necesario abrir dicho script para ejecutar cualquier otro. Los scripts 2, 3, 4, y 5 son de limpieza de datos test y train, selección y limpieza de variables espaciales y, estadísticas descriptivas, respectivamente. Los scripts 6 a 12 corresponden a la especificación de los modelos estimados: Regresión Lineal; Redes Neuronales; Elastic Net (EN); CART; Boosting; Random Forest; XGBoost y Superlearners. Existe una carpeta con otros scripts que se desarrollaron como prueba para mejorar las predicciones, por lo cual no se tuvieron en cuenta para subir a Kaggle y no se relacionan en el documento
+- `stores`: contiene la carpeta `submission` con todas los archivos .csv enviados a Kaggle para la predicción de precios de vivienda en Chapinero. También, se encuentran las bases de entrenamiento y test con la limpieza realizada y la adición de variables espaciales que se usaron en las estimaciones. 
+- `views`: contiene todas las figuras y tablas presentadas en el documento, generadas desde el código de R. 
+- `raw`: contiene los datos suministrados en Kaggle: bases train y test, así como los datos espaciales de Datos Abiertos Bogotá 
