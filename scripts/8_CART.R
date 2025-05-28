@@ -80,19 +80,25 @@ prueba0 = data.frame(property_id = train_st_drop$property_id,
                     predicho = predict(cv_tree, newdata = train_st_drop), 
                     observado = train_st_drop$price)
 
+dev.off()  # Cierra el dispositivo gráfico actual
 
-ggplot(prueba0, aes(x = observado)) +
+CART_CV = ggplot(prueba0, aes(x = observado)) +
   geom_density(aes(fill = "Observado"), alpha = 0.5, color = NA) +
   geom_density(aes(x = predicho, fill = "Predicho"), alpha = 0.2, color = NA) +
   
-  labs(title = "Densidad de valores observados vs. predichos",
+  labs(title = "",
        x = "Precio",
        y = "Densidad",
        fill = "Valores") +
-  scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "blue")) +
-  theme_classic()
-
-
+  scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "#63B8FF")) +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.justification = "center"
+  )
+CART_CV
+ggsave(file.path(paste0(view_path, "/CART_CV.png")), 
+       plot = CART_CV, width = 10, height = 6, dpi = 300)
 
 # ---------------------------------------------------- ----------------------------------------------------
 # ---------------------------------------------------- ----------------------------------------------------
@@ -118,8 +124,10 @@ fmla <- as.formula(paste("price ~", paste(vars_predictoras, collapse = " + ")))
 # 5. Crear índice para trainControl a partir de block_folds
 index <- lapply(block_folds$splits, function(x) x$in_id)  # in_id es el vector con índices de entrenamiento
 
-walk(block_folds$splits, function(x) print(autoplot(x)))
-
+CART_ECV_FOLSD = walk(block_folds$splits, function(x) print(autoplot(x)))
+CART_ECV_FOLSD <- map(block_folds$splits, ~ autoplot(.x))
+ggsave(file.path(paste0(view_path, "/CART_ECV_FOLSD_1.png")), 
+       plot = CART_ECV_FOLSD[[1]], width = 10, height = 6, dpi = 300)
 
 ctrl <- trainControl(method = "cv", index = index)
 
@@ -158,17 +166,23 @@ prueba = data.frame(property_id = train$property_id,
                     observado = train$price)
 
 
-ggplot(prueba, aes(x = observado)) +
+CART_ECV = ggplot(prueba, aes(x = observado)) +
   geom_density(aes(fill = "Observado"), alpha = 0.5, color = NA) +
   geom_density(aes(x = predicho, fill = "Predicho"), alpha = 0.2, color = NA) +
   
-  labs(title = "Densidad de valores observados vs. predichos",
+  labs(title = "",
        x = "Precio",
        y = "Densidad",
        fill = "Valores") +
-  scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "blue")) +
-  theme_classic()
-
+  scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "#63B8FF")) +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.justification = "center"
+  )
+CART_ECV
+ggsave(file.path(paste0(view_path, "/CART_ECV.png")), 
+       plot = CART_ECV, width = 10, height = 6, dpi = 300)
 
 
 # 6. PREDICCIÓN EN TEST ------------------------------------------------------
