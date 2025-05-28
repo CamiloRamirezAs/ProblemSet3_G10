@@ -79,16 +79,25 @@ prueba = data.frame(property_id = train$property_id,
                     observado = train$price)
 
 
-ggplot(prueba, aes(x = observado)) +
+NN_0_01 = ggplot(prueba, aes(x = observado)) +
   geom_density(aes(fill = "Observado"), alpha = 0.5, color = NA) +
   geom_density(aes(x = predicho, fill = "Predicho"), alpha = 0.2, color = NA) +
   
-  labs(title = "Densidad de valores observados vs. predichos",
+  labs(title = "",
        x = "Precio",
        y = "Densidad",
        fill = "Valores") +
-  scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "blue")) +
-  theme_classic()
+scale_fill_manual(values = c("Observado" = "gray", "Predicho" = "#63B8FF")) +
+  theme_classic() +
+  theme(
+    legend.position = "top",
+    legend.justification = "center"
+  )
+
+
+ggsave(file.path(paste0(view_path, "/NN_0_01.png")), 
+       plot = NN_0_01, width = 10, height = 6, dpi = 300)
+
 
 
 #-----------------------------------------------------------------------------//
